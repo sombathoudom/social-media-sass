@@ -6,7 +6,8 @@ use App\Http\Controllers\Facebook\{
     PageController,
     AutoReplyController,
     BroadcastController,
-    LiveStreamController
+    LiveStreamController,
+    ChatController
 };
 use App\Services\Facebook\WebhookHandlerService;
 
@@ -15,6 +16,31 @@ use App\Services\Facebook\WebhookHandlerService;
 | Facebook Authentication
 |--------------------------------------------------------------------------
 */
+Route::middleware(['auth'])
+    ->prefix('facebook/chat')
+    ->name('fb.chat.')
+    ->group(function () {
+
+        Route::get('/conversations', [ChatController::class, 'conversations'])
+            ->name('conversations');
+        // Main Chat Page (sidebar + messages)
+        Route::get('/', [ChatController::class, 'index'])
+            ->name('index');
+
+        // Switch conversation
+        Route::get('/{conversation}', [ChatController::class, 'show'])
+            ->name('show');
+
+        // Load more messages (pagination)
+        Route::get('/{conversation}/messages', [ChatController::class, 'messages'])
+            ->name('messages');
+
+        // Send a message
+        Route::post('/{conversation}/send', [ChatController::class, 'send'])
+            ->name('send');
+        
+    });
+
 
 Route::middleware(['auth'])->group(function () {
 

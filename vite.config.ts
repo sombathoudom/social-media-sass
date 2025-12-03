@@ -5,6 +5,17 @@ import laravel from 'laravel-vite-plugin';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+    // server: {
+    //     hmr: {
+    //         host: 'localhost',
+    //     },
+    //     proxy: {
+    //         '/app': {
+    //             target: 'ws://127.0.0.1:8080',
+    //             ws: true,
+    //         },
+    //     },
+    // },
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.tsx'],

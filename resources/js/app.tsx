@@ -1,10 +1,35 @@
 import '../css/app.css';
-
+// import './bootstrap';
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { initializeTheme } from './hooks/use-appearance';
+import { configureEcho } from '@laravel/echo-react';
+// import { configureEcho } from '@laravel/echo-react';
+
+configureEcho({
+    broadcaster: 'reverb',
+});
+
+// configureEcho({
+//     broadcaster: 'reverb',
+// });
+
+// useEffect(() => {
+//     if (!conversationId) return;
+
+//     const channel = window.Echo.channel(`chat.${conversationId}`);
+
+//     channel.listen('.new.message', (event: Message) => {
+//         onReceive(event);
+//     });
+
+//     return () => {
+//         window.Echo.leave(`chat.${conversationId}`);
+//     };
+// }, [conversationId]);
+
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 

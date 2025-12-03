@@ -13,9 +13,13 @@ return new class extends Migration
     {
         Schema::create('facebook_users', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('facebook_id')->nullable();
-            $table->text('access_token')->nullable();
+            $table->string('facebook_id')->unique();
+            $table->string('name')->nullable();
+            $table->string('avatar')->nullable();
+            $table->string('gender')->nullable();
+            $table->string('locale')->nullable();
+
+            $table->timestamp('synced_at')->nullable();
             $table->timestamps();
         });
     }

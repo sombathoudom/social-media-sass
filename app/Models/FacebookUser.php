@@ -7,9 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 class FacebookUser extends Model
 {
     protected $fillable = [
-        'user_id',
         'facebook_id',
-        'access_token',
+        'name',
+        'avatar',
+        'gender',
+        'locale',
+        'synced_at',
     ];
 
     public function user()

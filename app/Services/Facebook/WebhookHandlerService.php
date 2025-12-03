@@ -8,9 +8,17 @@ use App\Jobs\Facebook\ProcessAutoReplyJob;
 use App\Jobs\Facebook\ProcessAutoReplyInboxJob;
 use App\Jobs\Facebook\ProcessLiveCommentJob;
 use Illuminate\Support\Facades\Log;
+use App\Services\Facebook\FacebookUserService;
+use App\Services\Facebook\ConversationService;
+use App\Services\Facebook\ChatService;
 
 class WebhookHandlerService
 {
+    public function __construct(
+        protected FacebookUserService $userService,
+        protected ConversationService $conversationService,
+        protected ChatService $chatService,
+    ) {}
     /**
      * VERIFY WEBHOOK
      */
@@ -190,5 +198,98 @@ class WebhookHandlerService
                 );
             }
         }
+    }
+
+    public function handleMessagingEvent(array $event): void
+    {
+        // --------------------------------------------------------
+        // Extract PSID (page-scoped user id) and Page ID
+        // --------------------------------------------------------
+        $psid   = $event['sender']['id']     ?? null;
+        $pageId = $event['recipient']['id'] ?? null;
+
+        if (!$psid || !$pageId) {
+            return;
+        }
+
+        // --------------------------------------------------------
+        // Find Facebook Page
+        // --------------------------------------------------------
+        $page = FacebookPage::where('page_id', $pageId)->first();
+        if (!$page) {
+            Log::warning("Webhook: FB Page not found: {$pageId}");
+            return;
+        }
+
+        // --------------------------------------------------------
+        // Extract message content
+        // --------------------------------------------------------
+        $messageText = $event['message']['text'] ?? null;
+        $attachments = $event['message']['attachments'][0] ?? null;
+
+        // --------------------------------------------------------
+        // 1. SYNC Facebook Page User (PSID + profile)
+        // --------------------------------------------------------
+        $fbUser = FacebookPageUser::updateOrCreate(
+            [
+                'facebook_page_id' => $page->id,
+                'psid'             => $psid,
+            ],
+            [
+                'last_interaction_at' => now(),
+                'name'                => $event['sender']['name'] ?? null,
+                'profile_pic'         => $event['sender']['profile_pic'] ?? null,
+            ]
+        );
+
+        // --------------------------------------------------------
+        // 2. FIND or CREATE Conversation
+        // --------------------------------------------------------
+        $conversation = FacebookConversation::firstOrCreate(
+            [
+                'facebook_page_id'      => $page->id,
+                'facebook_page_user_id' => $fbUser->id,
+            ],
+            [
+                'unread_count' => 0,
+            ]
+        );
+
+        // --------------------------------------------------------
+        // 3. Store incoming message
+        // --------------------------------------------------------
+        $type    = 'text';
+        $content = $messageText;
+
+        if ($attachments) {
+            $type    = $attachments['type']; // image, audio, video, file, etc.
+            $content = $attachments['payload']['url'] ?? null;
+        }
+
+        $facebookMessage = FacebookMessage::create([
+            'conversation_id' => $conversation->id,
+            'from_type'       => 'user',
+            'message_type'    => $type,
+            'message'         => $content,
+            'attachments'     => $attachments,
+            'sent_at'         => now(),
+        ]);
+
+        // --------------------------------------------------------
+        // 4. Update Conversation
+        // --------------------------------------------------------
+        $conversation->update([
+            'last_message'    => $content,
+            'last_message_at' => now(),
+        ]);
+
+        $conversation->increment('unread_count');
+        $conversation->touch();
+
+        // --------------------------------------------------------
+        // 5. Broadcast to frontend (Laravel Reverb)
+        // --------------------------------------------------------
+        broadcast(new \App\Events\MessageSent($facebookMessage))
+            ->toOthers();
     }
 }
