@@ -44,6 +44,7 @@ class FacebookAuthController extends Controller
             /** @var \Laravel\Socialite\Two\User $facebookUser */
             $facebookUser = Socialite::driver('facebook')->stateless()->user();
         } catch (Exception $e) {
+            dd($e);
             return redirect()
                 ->route('fb.connect')
                 ->with('error', 'Facebook authentication failed.');

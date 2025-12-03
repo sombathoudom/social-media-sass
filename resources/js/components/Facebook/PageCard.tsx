@@ -1,9 +1,7 @@
-'use client';
-
 import { FC } from 'react';
 import { FacebookPage } from '@/types/facebook';
-import { useForm } from '@inertiajs/react';
-import { pages } from '@/routes/fb';
+import { router } from '@inertiajs/react';
+import fb from '@/routes/fb';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -13,11 +11,9 @@ interface Props {
 }
 
 const PageCard: FC<Props> = ({ page, active }) => {
-  const { post } = useForm();
-
   const handleSwitch = () => {
-    post(fb_pages_switch(), {
-      data: { page_id: page.page_id },
+    router.post(fb.pages.switch().url, {
+      page_id: page.page_id,
     });
   };
 

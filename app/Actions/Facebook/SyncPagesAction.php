@@ -12,8 +12,15 @@ class SyncPagesAction
         protected FacebookService $fb
     ) {}
 
-    public function execute($user)
+    public function execute($user, $isForce=false)
     {
+        // Check if pages already exist for this user
+
+        if (FacebookPage::where('user_id', $user->id)->exists() && !$isForce) {
+            return FacebookPage::where('user_id', $user->id)->get();
+        }
+
+        // First-time sync
         $pages = $this->fb->getUserPages($user);
 
         foreach ($pages as $p) {
@@ -31,4 +38,24 @@ class SyncPagesAction
 
         return FacebookPage::where('user_id', $user->id)->get();
     }
+
+    // public function execute($user)
+    // {
+    //     $pages = $this->fb->getUserPages($user);
+
+    //     foreach ($pages as $p) {
+    //         FacebookPage::updateOrCreate(
+    //             [
+    //                 'user_id' => $user->id,
+    //                 'page_id' => $p['id'],
+    //             ],
+    //             [
+    //                 'name' => $p['name'],
+    //                 'access_token' => encrypt($p['access_token']),
+    //             ]
+    //         );
+    //     }
+
+    //     return FacebookPage::where('user_id', $user->id)->get();
+    // }
 }

@@ -22,8 +22,16 @@ class PageController extends Controller
         ]);
     }
 
+    public function syncMorePages(SyncPagesAction $syncPages)
+    {
+        $syncPages->execute(auth()->user(), true);
+
+        return back()->with('success', 'Pages synced successfully');
+    }
+
     public function switch(PageSwitchRequest $request, SwitchPageAction $switch)
     {
+       
         $switch->execute(auth()->user(), $request->page_id);
 
         return back()->with('success', 'Active page switched.');
