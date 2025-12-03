@@ -1,0 +1,34 @@
+<?php
+
+namespace App\Actions\Facebook;
+
+use App\Models\FacebookPage;
+use App\Services\Facebook\FacebookService;
+use Illuminate\Support\Facades\Log;
+
+class SyncPagesAction
+{
+    public function __construct(
+        protected FacebookService $fb
+    ) {}
+
+    public function execute($user)
+    {
+        $pages = $this->fb->getUserPages($user);
+
+        foreach ($pages as $p) {
+            FacebookPage::updateOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'page_id' => $p['id'],
+                ],
+                [
+                    'name' => $p['name'],
+                    'access_token' => encrypt($p['access_token']),
+                ]
+            );
+        }
+
+        return FacebookPage::where('user_id', $user->id)->get();
+    }
+}
