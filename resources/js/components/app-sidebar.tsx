@@ -11,6 +11,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import fb from '@/routes/fb';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
 import { BookOpen, Folder, LayoutGrid } from 'lucide-react';
@@ -22,6 +23,12 @@ const mainNavItems: NavItem[] = [
         href: dashboard(),
         icon: LayoutGrid,
     },
+    {
+        title: 'Pages',
+        href: fb.pages(),
+        icon: LayoutGrid,
+       
+    }
 ];
 
 const footerNavItems: NavItem[] = [

@@ -49,10 +49,16 @@ class FacebookAuthController extends Controller
                 ->route('fb.connect')
                 ->with('error', 'Facebook authentication failed.');
         }
-        // Save token + FB ID on current Laravel user
+        
+        // Save token + FB ID + profile info on current Laravel user
+        // This data is stored during OAuth callback to avoid repeated API calls
+        // and prevent hitting Facebook's rate limits
         $request->user()->update([
             'facebook_id'     => $facebookUser->getId(),
             'facebook_token'  => encrypt($facebookUser->token),
+            'facebook_name'   => $facebookUser->getName(),
+            'facebook_email'  => $facebookUser->getEmail(),
+            'facebook_avatar' => $facebookUser->getAvatar(),
         ]);
 
         // OPTIONAL: Get long-lived token (recommended)

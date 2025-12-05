@@ -63,6 +63,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/facebook/pages', [PageController::class, 'index'])
         ->name('fb.pages');
 
+    Route::post('/facebook/pages/sync', [PageController::class, 'syncMorePages'])
+        ->name('fb.pages.sync');
+
     Route::post('/facebook/pages/switch', [PageController::class, 'switch'])
         ->name('fb.pages.switch');
 

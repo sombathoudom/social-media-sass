@@ -14,11 +14,21 @@ class PageController extends Controller
     {
         $user = auth()->user();
 
+        // This will only fetch from Facebook API if no pages exist in database
+        // Otherwise, it returns cached pages from database to avoid rate limits
         $pages = $sync->execute($user);
 
         return Inertia::render('Facebook/Pages', [
             'pages' => $pages,
             'active_page_id' => $user->active_page_id,
+            'facebook_profile' => [
+                // Profile data is read from database (stored during OAuth callback)
+                // No API calls to Facebook here
+                'name' => $user->facebook_name,
+                'email' => $user->facebook_email,
+                'avatar' => $user->facebook_avatar,
+                'connected' => !empty($user->facebook_id),
+            ],
         ]);
     }
 

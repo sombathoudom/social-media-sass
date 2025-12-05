@@ -15,12 +15,16 @@ class SyncPagesAction
     public function execute($user, $isForce=false)
     {
         // Check if pages already exist for this user
+        // This prevents unnecessary API calls to Facebook and avoids rate limits
+        // Only fetch from Facebook API if:
+        // 1. No pages exist in database (first-time sync)
+        // 2. User explicitly clicks "Sync Pages" button ($isForce = true)
 
         if (FacebookPage::where('user_id', $user->id)->exists() && !$isForce) {
             return FacebookPage::where('user_id', $user->id)->get();
         }
 
-        // First-time sync
+        // Fetch pages from Facebook API
         $pages = $this->fb->getUserPages($user);
 
         foreach ($pages as $p) {
