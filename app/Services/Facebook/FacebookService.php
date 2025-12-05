@@ -14,8 +14,8 @@ class FacebookService
     public function __construct()
     {
         $this->fb = new Facebook([
-            'app_id'                => config('services.facebook.client_id'),
-            'app_secret'            => config('services.facebook.client_secret'),
+            'app_id'                => config('services.facebook.app_id'),
+            'app_secret'            => config('services.facebook.app_secret'),
             'default_graph_version' => 'v19.0',
         ]);
     }

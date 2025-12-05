@@ -13,10 +13,37 @@ class FacebookWebhookController extends Controller
         return $service->verifyWebhook($request);
     }
 
-    public function handle(Request $request, WebhookHandlerService $service)
+    public function handle(Request $request)
     {
-        $service->handleEvent($request->all());
-        return response('EVENT_RECEIVED', 200);
+        // ------------------------------------------------------------
+        // 1) HANDLE VERIFY WEBHOOK (Facebook GET request)
+        // ------------------------------------------------------------
+        if ($request->isMethod('get')) {
+            $verifyToken = config('services.facebook.verify_token');
+            $mode        = $request->input('hub.mode');
+            $token       = $request->input('hub.verify_token');
+            $challenge   = $request->input('hub.challenge');
+
+            if ($mode === 'subscribe' && $token === $verifyToken) {
+                return response($challenge, 200);
+            }
+
+            return response("Invalid verify token", 403);
+        }
+
+        // ------------------------------------------------------------
+        // 2) HANDLE EVENTS (Facebook POST request)
+        // ------------------------------------------------------------
+        if ($request->isMethod('post')) {
+
+            // Dispatch to your service or handle directly here
+            app(\App\Services\Facebook\WebhookHandlerService::class)
+                ->handleEvent($request->all());
+
+            return response("EVENT_RECEIVED", 200);
+        }
+
+        return response("METHOD_NOT_ALLOWED", 405);
     }
 
     // public function process(Request $request)

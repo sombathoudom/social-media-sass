@@ -7,7 +7,8 @@ use App\Http\Controllers\Facebook\{
     AutoReplyController,
     BroadcastController,
     LiveStreamController,
-    ChatController
+    ChatController,
+    FacebookWebhookController
 };
 use App\Services\Facebook\WebhookHandlerService;
 
@@ -137,23 +138,26 @@ Route::middleware(['auth'])->group(function () {
 | and POST for events
 |--------------------------------------------------------------------------
 */
-Route::get('/facebook/webhook', [\App\Http\Controllers\Facebook\FacebookWebhookController::class, 'verify']);
-Route::post('/facebook/webhook', [\App\Http\Controllers\Facebook\FacebookWebhookController::class, 'handle']);
+//Route::get('/facebook/webhook', [\App\Http\Controllers\Facebook\FacebookWebhookController::class, 'verify']);
+//Route::post('/facebook/webhook', [\App\Http\Controllers\Facebook\FacebookWebhookController::class, 'handle']);
 
-Route::match(['GET', 'POST'], '/facebook/webhook', function () {
+// Route::match(['GET', 'POST'], '/facebook/webhook', function () {
 
-    $service = app(WebhookHandlerService::class);
+//     $service = app(WebhookHandlerService::class);
 
-    // GET == Verify
-    if (request()->isMethod('get')) {
-        return $service->verifyWebhook(request());
-    }
+//     // GET == Verify
+//     if (request()->isMethod('get')) {
+//         return $service->verifyWebhook(request());
+//     }
 
-    // POST == Events
-    if (request()->isMethod('post')) {
-        $service->handleEvent(request()->all());
-        return response('EVENT_RECEIVED', 200);
-    }
+//     // POST == Events
+//     if (request()->isMethod('post')) {
+//         $service->handleEvent(request()->all());
+//         return response('EVENT_RECEIVED', 200);
+//     }
 
-    return response('METHOD_NOT_ALLOWED', 405);
-});
+//     return response('METHOD_NOT_ALLOWED', 405);
+// });
+
+Route::match(['GET', 'POST'], '/facebook/webhook', [FacebookWebhookController::class, 'handle'])
+    ->name('facebook.webhook');
