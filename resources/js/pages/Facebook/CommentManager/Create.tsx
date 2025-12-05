@@ -1,7 +1,8 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
 import { FacebookPage, CommentTemplate } from '@/types/facebook';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import fb from '@/routes/fb';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -56,12 +57,17 @@ export default function Create({ pages, templates }: Props) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const toastId = toast.loading('Creating campaign...');
+    
     post(fb.commentManager.store().url, {
       onError: (errors) => {
+        toast.error('Failed to create campaign. Please check the form.', { id: toastId });
         console.error('Validation errors:', errors);
       },
       onSuccess: () => {
-        console.log('Campaign created successfully!');
+        toast.success('Campaign created successfully!', { id: toastId });
+        router.visit(fb.commentManager.index().url);
       },
     });
   };

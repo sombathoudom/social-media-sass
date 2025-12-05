@@ -2,6 +2,7 @@ import { Head, useForm, router } from '@inertiajs/react';
 import { FacebookPage, CommentTemplate, AutoReplyCampaign } from '@/types/facebook';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import fb from '@/routes/fb';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -60,7 +61,18 @@ export default function Edit({ campaign, pages, templates }: Props) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    put(fb.commentManager.update(campaign.id).url);
+    
+    const toastId = toast.loading('Updating campaign...');
+    
+    put(fb.commentManager.update(campaign.id).url, {
+      onError: (errors) => {
+        toast.error('Failed to update campaign. Please check the form.', { id: toastId });
+        console.error('Validation errors:', errors);
+      },
+      onSuccess: () => {
+        toast.success('Campaign updated successfully!', { id: toastId });
+      },
+    });
   };
 
   return (

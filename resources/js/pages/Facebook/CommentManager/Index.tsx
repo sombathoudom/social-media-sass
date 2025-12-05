@@ -4,6 +4,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 import fb from '@/routes/fb';
 
 interface Props {
@@ -12,9 +13,27 @@ interface Props {
 
 export default function Index({ campaigns }: Props) {
   const handleDelete = (id: number) => {
-    if (confirm('Are you sure you want to delete this campaign?')) {
-      router.delete(fb.commentManager.destroy(id).url);
-    }
+    toast('Are you sure you want to delete this campaign?', {
+      action: {
+        label: 'Delete',
+        onClick: () => {
+          const toastId = toast.loading('Deleting campaign...');
+          
+          router.delete(fb.commentManager.destroy(id).url, {
+            onSuccess: () => {
+              toast.success('Campaign deleted successfully!', { id: toastId });
+            },
+            onError: () => {
+              toast.error('Failed to delete campaign', { id: toastId });
+            },
+          });
+        },
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => toast.dismiss(),
+      },
+    });
   };
 
   return (

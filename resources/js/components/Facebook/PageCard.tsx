@@ -6,6 +6,7 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
 interface Props {
   page: FacebookPage;
@@ -14,8 +15,17 @@ interface Props {
 
 const PageCard: FC<Props> = ({ page, active }) => {
   const handleSwitch = () => {
+    const toastId = toast.loading('Switching page...');
+    
     router.post(fb.pages.switch().url, {
       page_id: page.page_id,
+    }, {
+      onSuccess: () => {
+        toast.success(`Switched to ${page.name}`, { id: toastId });
+      },
+      onError: () => {
+        toast.error('Failed to switch page', { id: toastId });
+      },
     });
   };
 

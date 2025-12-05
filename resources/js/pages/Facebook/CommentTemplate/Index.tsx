@@ -2,6 +2,7 @@ import { Head, useForm } from '@inertiajs/react';
 import { CommentTemplate, FacebookPage } from '@/types/facebook';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -40,10 +41,18 @@ export default function Index({ templates, pages }: Props) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const toastId = toast.loading('Creating template...');
+    
     post('/facebook/comment-templates', {
       onSuccess: () => {
+        toast.success('Template created successfully!', { id: toastId });
         reset();
         setIsOpen(false);
+      },
+      onError: (errors) => {
+        toast.error('Failed to create template. Please check the form.', { id: toastId });
+        console.error('Validation errors:', errors);
       },
     });
   };
