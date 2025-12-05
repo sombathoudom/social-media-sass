@@ -8,7 +8,9 @@ use App\Http\Controllers\Facebook\{
     BroadcastController,
     LiveStreamController,
     ChatController,
-    FacebookWebhookController
+    FacebookWebhookController,
+    CommentTemplateController,
+    CommentManagerController
 };
 use App\Services\Facebook\WebhookHandlerService;
 
@@ -129,6 +131,37 @@ Route::middleware(['auth'])->group(function () {
     // Polling endpoint for live video comments
     Route::post('/facebook/live/fetch', [LiveStreamController::class, 'fetch'])
         ->name('fb.live.fetch');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Comment Templates
+    |--------------------------------------------------------------------------
+    */
+
+    Route::prefix('facebook/comment-templates')->name('fb.comment-templates.')->group(function () {
+        Route::get('/', [CommentTemplateController::class, 'index'])->name('index');
+        Route::post('/', [CommentTemplateController::class, 'store'])->name('store');
+        Route::put('/{template}', [CommentTemplateController::class, 'update'])->name('update');
+        Route::delete('/{template}', [CommentTemplateController::class, 'destroy'])->name('destroy');
+    });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Comment Manager / Auto Reply Campaigns
+    |--------------------------------------------------------------------------
+    */
+
+    Route::prefix('facebook/comment-manager')->name('fb.comment-manager.')->group(function () {
+        Route::get('/', [CommentManagerController::class, 'index'])->name('index');
+        Route::get('/create', [CommentManagerController::class, 'create'])->name('create');
+        Route::post('/', [CommentManagerController::class, 'store'])->name('store');
+        Route::get('/{campaign}/edit', [CommentManagerController::class, 'edit'])->name('edit');
+        Route::put('/{campaign}', [CommentManagerController::class, 'update'])->name('update');
+        Route::delete('/{campaign}', [CommentManagerController::class, 'destroy'])->name('destroy');
+        Route::get('/{campaign}/logs', [CommentManagerController::class, 'logs'])->name('logs');
+    });
 });
 
 

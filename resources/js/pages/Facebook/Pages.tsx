@@ -39,7 +39,7 @@ export default function Pages({ pages, active_page_id, facebook_profile }: Props
     <AppLayout>
       <Head title="Pages" />
 
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
+      <div className="container mx-auto px-6 py-6 max-w-[1600px] space-y-6">
         {facebook_profile.connected && (
           <Card>
             <CardContent className="flex items-center gap-4 p-6">

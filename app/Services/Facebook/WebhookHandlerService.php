@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 use App\Services\Facebook\FacebookUserService;
 use App\Services\Facebook\ConversationService;
 use App\Services\Facebook\ChatService;
+use App\Services\Facebook\CommentAutomationService;
 
 class WebhookHandlerService
 {
@@ -18,6 +19,7 @@ class WebhookHandlerService
         protected FacebookUserService $userService,
         protected ConversationService $conversationService,
         protected ChatService $chatService,
+        protected CommentAutomationService $commentAutomation,
     ) {}
     /**
      * VERIFY WEBHOOK
@@ -105,6 +107,15 @@ class WebhookHandlerService
             return;
         }
 
+        // Process with new Comment Automation Service
+        $this->commentAutomation->processComment(
+            $commentId,
+            $message,
+            $pageId,
+            $value
+        );
+
+        // Keep old auto-reply rules for backward compatibility
         $page = FacebookPage::where('page_id', $pageId)->first();
         if (!$page) return;
 
@@ -114,9 +125,7 @@ class WebhookHandlerService
             ->get();
 
         foreach ($rules as $rule) {
-
             if (str_contains(strtolower($message), strtolower($rule->trigger_keyword))) {
-
                 ProcessAutoReplyJob::dispatch(
                     $page->owner,
                     [
