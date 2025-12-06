@@ -111,7 +111,13 @@ export default function ChatLayout({
         const channel = window.Echo.channel(`chat.${id}`);
 
         channel.listen('.new.message', (event: FacebookMessage) => {
-            setMessages((prev) => [...prev, event]);
+            // Add message to state (this handles both incoming and outgoing messages)
+            setMessages((prev) => {
+                // Check if message already exists (avoid duplicates)
+                const exists = prev.some(msg => msg.id === event.id);
+                if (exists) return prev;
+                return [...prev, event];
+            });
         });
 
         return () => {
@@ -153,9 +159,10 @@ export default function ChatLayout({
 
                         <ChatInput
                             conversation={selectedConversation}
-                            onSend={(msg) =>
-                                setMessages((prev) => [...prev, msg])
-                            }
+                            onSend={(msg) => {
+                                // Add message immediately for instant feedback
+                                setMessages((prev) => [...prev, msg]);
+                            }}
                         />
                     </>
                 ) : (

@@ -19,6 +19,12 @@ class CommentAutomationService
     public function processComment(string $commentId, string $commentText, string $pageId, array $commentData = [])
     {
         try {
+            Log::info("CommentAutomationService: Starting to process comment", [
+                'comment_id' => $commentId,
+                'page_id' => $pageId,
+                'comment_text' => $commentText,
+            ]);
+
             // Find the Facebook page
             $page = FacebookPage::where('page_id', $pageId)->first();
             
@@ -27,8 +33,12 @@ class CommentAutomationService
                 return;
             }
 
+            Log::info("Page found", ['page_name' => $page->name, 'page_db_id' => $page->id]);
+
             // Get active campaigns for this page
             $campaigns = $this->getActiveCampaignsForPage($page);
+
+            Log::info("Active campaigns found", ['count' => $campaigns->count()]);
 
             if ($campaigns->isEmpty()) {
                 Log::info("No active campaigns for page: {$pageId}");
@@ -36,12 +46,17 @@ class CommentAutomationService
             }
 
             foreach ($campaigns as $campaign) {
+                Log::info("Processing campaign", [
+                    'campaign_id' => $campaign->id,
+                    'campaign_name' => $campaign->name,
+                ]);
                 $this->processCampaign($campaign, $commentId, $commentText, $page, $commentData);
             }
         } catch (\Exception $e) {
             Log::error("Error processing comment: " . $e->getMessage(), [
                 'comment_id' => $commentId,
                 'page_id' => $pageId,
+                'trace' => $e->getTraceAsString(),
             ]);
         }
     }
@@ -69,6 +84,11 @@ class CommentAutomationService
      */
     protected function processCampaign(AutoReplyCampaign $campaign, string $commentId, string $commentText, FacebookPage $page, array $commentData)
     {
+        Log::info("processCampaign: Starting", [
+            'campaign_id' => $campaign->id,
+            'comment_id' => $commentId,
+        ]);
+
         // Check if already processed by this campaign
         $alreadyProcessed = CommentAutomationLog::where('auto_reply_campaign_id', $campaign->id)
             ->where('comment_id', $commentId)
@@ -87,6 +107,7 @@ class CommentAutomationService
 
         // Check for offensive content first
         if ($campaign->delete_offensive && $this->isOffensive($commentText, $campaign)) {
+            Log::info("Offensive comment detected");
             $this->handleOffensiveComment($campaign, $commentId, $page, $commentData);
             
             // Log offensive comment handling
@@ -96,6 +117,7 @@ class CommentAutomationService
 
         // Like the comment if enabled
         if ($campaign->like_comment) {
+            Log::info("Liking comment");
             $this->likeComment($commentId, $page);
             $actions[] = 'liked';
         }
@@ -103,22 +125,29 @@ class CommentAutomationService
         // Process reply based on type
         $replyMessage = null;
         if ($campaign->enable_comment_reply) {
+            Log::info("Generating reply", ['reply_type' => $campaign->reply_type]);
             $replyMessage = $this->generateReply($campaign, $commentText);
+            
+            Log::info("Reply generated", ['message' => $replyMessage]);
             
             if ($replyMessage) {
                 $this->replyToComment($commentId, $replyMessage, $campaign, $page);
                 $actions[] = 'replied';
+                
+
             }
         }
 
         // Hide comment if enabled
         if ($campaign->hide_after_reply) {
+            Log::info("Hiding comment");
             $this->hideComment($commentId, $page);
             $actions[] = 'hidden';
         }
 
         // Log the actions taken
         if (!empty($actions)) {
+            Log::info("Logging actions", ['actions' => $actions]);
             $this->logAction(
                 $campaign,
                 $page,
@@ -128,6 +157,8 @@ class CommentAutomationService
                 implode(',', $actions),
                 $replyMessage
             );
+        } else {
+            Log::warning("No actions taken for comment");
         }
     }
 
@@ -303,21 +334,34 @@ class CommentAutomationService
     }
 
     /**
-     * Send private message to user
+     * Send private message to user (for offensive comment handling)
+     * Returns true if message was sent successfully, false otherwise
      */
-    protected function sendPrivateMessage(string $userId, string $message, FacebookPage $page)
+    protected function sendPrivateMessage(string $userId, string $message, FacebookPage $page): bool
     {
         try {
             $accessToken = decrypt($page->access_token);
             
-            $this->fb->api("/{$page->page_id}/messages", 'POST', [
+            // Facebook Messenger has a 24-hour messaging window policy
+            // We can only send messages to users who have messaged us within 24 hours
+            // OR we need to use specific message tags for certain use cases
+            
+            $params = [
                 'recipient' => ['id' => $userId],
                 'message' => ['text' => $message],
-            ], $accessToken);
+                'messaging_type' => 'RESPONSE', // Standard response type
+            ];
             
-            Log::info("Private message sent", ['user_id' => $userId]);
+            $this->fb->api("/{$page->page_id}/messages", 'POST', $params, $accessToken);
+            Log::info("Private message sent successfully", ['user_id' => $userId]);
+            return true;
+            
         } catch (\Exception $e) {
-            Log::error("Failed to send private message: " . $e->getMessage());
+            // Log the error but don't fail the entire process
+            Log::warning("Could not send private message (likely outside 24h window): " . $e->getMessage(), [
+                'user_id' => $userId,
+            ]);
+            return false;
         }
     }
 

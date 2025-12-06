@@ -2,7 +2,7 @@
 
 namespace App\Events;
 
-use App\Models\Message;
+use App\Models\FacebookMessage;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -12,7 +12,7 @@ class MessageSent implements ShouldBroadcast
 {
     use SerializesModels;
 
-    public function __construct(public Message $message) {}
+    public function __construct(public FacebookMessage $message) {}
 
     public function broadcastOn()
     {

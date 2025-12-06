@@ -44,15 +44,18 @@ const ChatInput: FC<Props> = ({ conversation, onSend }) => {
 
         setLoading(true);
 
-        const res = await axios.post(fb.chat.send().url, {
-            conversation_id: conversation.id,
-            message: text,
-            type: 'text',
-        });
+        try {
+            const res = await axios.post(fb.chat.send(conversation.id).url, {
+                text: text,
+            });
 
-        setLoading(false);
-        onSend(res.data);
-        setText('');
+            onSend(res.data.message);
+            setText('');
+        } catch (error) {
+            console.error('Failed to send message:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     // -----------------------------------------------------------------------
@@ -63,35 +66,43 @@ const ChatInput: FC<Props> = ({ conversation, onSend }) => {
 
         setLoading(true);
 
-        const form = new FormData();
-        form.append('image', selectedImage);
-        form.append('conversation_id', conversation.id.toString());
-        form.append('type', 'image');
+        try {
+            const form = new FormData();
+            form.append('image', selectedImage);
+            form.append('attachment_type', 'image');
 
-        const res = await axios.post(fb.chat.send().url, form, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-        });
+            const res = await axios.post(fb.chat.send(conversation.id).url, form, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
 
-        setLoading(false);
-        setSelectedImage(null);
-        setShowImagePreview(false);
-        onSend(res.data);
+            onSend(res.data.message);
+            setSelectedImage(null);
+            setShowImagePreview(false);
+        } catch (error) {
+            console.error('Failed to send image:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     // -----------------------------------------------------------------------
     // SEND AUDIO
     // -----------------------------------------------------------------------
     const sendVoiceMessage = async (file: File) => {
-        const form = new FormData();
-        form.append('audio', file);
-        form.append('conversation_id', conversation.id.toString());
-        form.append('type', 'voice');
-
         setLoading(true);
-        const res = await axios.post(fb.chat.send().url, form);
-        setLoading(false);
 
-        onSend(res.data);
+        try {
+            const form = new FormData();
+            form.append('audio', file);
+            form.append('attachment_type', 'audio');
+
+            const res = await axios.post(fb.chat.send(conversation.id).url, form);
+            onSend(res.data.message);
+        } catch (error) {
+            console.error('Failed to send voice message:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     // -----------------------------------------------------------------------

@@ -29,45 +29,7 @@ class ChatService
     {
         $page     = $conversation->page;
         $recipient = $conversation->user->psid; // PAGE-SCOPED USER ID
-
-        // ----------------------------------------------------
-        // Build Facebook payload
-        // ----------------------------------------------------
-        $payload = [
-            'recipient' => [
-                'id' => $recipient,
-            ],
-            'message' => [],
-        ];
-
-        // TEXT
-        if (!empty($data['text'])) {
-            $payload['message']['text'] = $data['text'];
-        }
-
-        // ATTACHMENTS
-        if (!empty($data['attachment_type']) && !empty($data['attachment_url'])) {
-            $payload['message']['attachment'] = [
-                'type'    => $data['attachment_type'], // image|audio|video|file
-                'payload' => [
-                    'url'         => $data['attachment_url'],
-                    'is_reusable' => true,
-                ],
-            ];
-        }
-
-        // ----------------------------------------------------
-        // SEND TO FACEBOOK
-        // ----------------------------------------------------
-        try {
-            $this->fb->post(
-                '/me/messages',
-                $payload,
-                $page->access_token
-            );
-        } catch (\Throwable $e) {
-            Log::error('Facebook Send Message Error: ' . $e->getMessage());
-        }
+        $accessToken = decrypt($page->access_token);
 
         // ----------------------------------------------------
         // Determine message type & content for DB
@@ -78,6 +40,107 @@ class ChatService
         if (!empty($data['attachment_type'])) {
             $messageType = $data['attachment_type']; // image|audio|video|file
             $content     = $data['attachment_url'];
+        }
+
+        // ----------------------------------------------------
+        // Build Facebook payload
+        // ----------------------------------------------------
+        $payload = [
+            'recipient' => [
+                'id' => $recipient,
+            ],
+            'messaging_type' => 'RESPONSE',
+        ];
+
+        // TEXT ONLY
+        if (!empty($data['text']) && empty($data['attachment_type'])) {
+            $payload['message'] = [
+                'text' => $data['text'],
+            ];
+        }
+        // ATTACHMENT (with optional text)
+        elseif (!empty($data['attachment_type']) && !empty($data['attachment_url'])) {
+            // For local files, we need to upload them directly to Facebook
+            $attachmentUrl = $data['attachment_url'];
+            
+            // Check if it's a local file path
+            if (str_starts_with($attachmentUrl, asset('storage/'))) {
+                // Convert asset URL to file path
+                $relativePath = str_replace(asset('storage/'), '', $attachmentUrl);
+                $filePath = storage_path('app/public/' . $relativePath);
+                
+                if (file_exists($filePath)) {
+                    // Upload file directly to Facebook
+                    $attachmentId = $this->uploadAttachment($filePath, $data['attachment_type'], $accessToken);
+                    
+                    if ($attachmentId) {
+                        $payload['message'] = [
+                            'attachment' => [
+                                'type' => $data['attachment_type'],
+                                'payload' => [
+                                    'attachment_id' => $attachmentId,
+                                ],
+                            ],
+                        ];
+                    } else {
+                        throw new \Exception('Failed to upload attachment to Facebook');
+                    }
+                } else {
+                    throw new \Exception('File not found: ' . $filePath);
+                }
+            } else {
+                // External URL - use URL method
+                $payload['message'] = [
+                    'attachment' => [
+                        'type' => $data['attachment_type'],
+                        'payload' => [
+                            'url' => $attachmentUrl,
+                            'is_reusable' => true,
+                        ],
+                    ],
+                ];
+            }
+            
+            // Add text if provided
+            if (!empty($data['text'])) {
+                $payload['message']['text'] = $data['text'];
+            }
+        }
+
+        // ----------------------------------------------------
+        // SEND TO FACEBOOK using HTTP client
+        // ----------------------------------------------------
+        try {
+            $url = 'https://graph.facebook.com/v19.0/me/messages';
+            
+            Log::info('Sending message to Facebook', [
+                'recipient' => $recipient,
+                'type' => $messageType,
+                'has_text' => !empty($payload['message']['text']),
+                'has_attachment' => !empty($payload['message']['attachment']),
+            ]);
+            
+            $response = \Illuminate\Support\Facades\Http::post($url, array_merge($payload, [
+                'access_token' => $accessToken,
+            ]));
+
+            if ($response->failed()) {
+                $error = $response->json('error.message', 'Unknown error');
+                $errorCode = $response->json('error.code', 0);
+                throw new \Exception("Facebook API Error ({$errorCode}): {$error}");
+            }
+            
+            Log::info('Message sent to Facebook successfully', [
+                'recipient' => $recipient,
+                'type' => $messageType,
+                'response' => $response->json(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Facebook Send Message Error: ' . $e->getMessage(), [
+                'recipient' => $recipient,
+                'payload' => $payload,
+            ]);
+            throw $e;
         }
 
         // ----------------------------------------------------
@@ -102,5 +165,54 @@ class ChatService
         broadcast(new \App\Events\MessageSent($message))->toOthers();
 
         return $message;
+    }
+
+    /**
+     * Upload attachment to Facebook and get attachment ID
+     */
+    protected function uploadAttachment(string $filePath, string $type, string $accessToken): ?string
+    {
+        try {
+            $url = 'https://graph.facebook.com/v19.0/me/message_attachments';
+            
+            Log::info('Uploading attachment to Facebook', [
+                'file' => basename($filePath),
+                'type' => $type,
+                'size' => filesize($filePath),
+            ]);
+            
+            $response = \Illuminate\Support\Facades\Http::attach(
+                'filedata',
+                file_get_contents($filePath),
+                basename($filePath)
+            )->post($url, [
+                'message' => json_encode([
+                    'attachment' => [
+                        'type' => $type,
+                        'payload' => [
+                            'is_reusable' => true,
+                        ],
+                    ],
+                ]),
+                'access_token' => $accessToken,
+            ]);
+
+            if ($response->successful()) {
+                $attachmentId = $response->json('attachment_id');
+                Log::info('Attachment uploaded to Facebook', [
+                    'attachment_id' => $attachmentId,
+                    'type' => $type,
+                ]);
+                return $attachmentId;
+            }
+
+            Log::error('Failed to upload attachment', [
+                'response' => $response->json(),
+            ]);
+            return null;
+        } catch (\Throwable $e) {
+            Log::error('Attachment upload error: ' . $e->getMessage());
+            return null;
+        }
     }
 }

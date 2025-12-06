@@ -1,33 +1,10 @@
 import '../css/app.css';
-// import './bootstrap';
+import './bootstrap';
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { initializeTheme } from './hooks/use-appearance';
-import { configureEcho } from '@laravel/echo-react';
-
-// configureEcho({
-//     broadcaster: 'reverb',
-//     key: import.meta.env.VITE_REVERB_APP_KEY,
-//     wsHost: import.meta.env.VITE_REVERB_HOST,
-//     wsPort: import.meta.env.VITE_REVERB_PORT ? Number(import.meta.env.VITE_REVERB_PORT) : 8080,
-//     wssPort: import.meta.env.VITE_REVERB_PORT ? Number(import.meta.env.VITE_REVERB_PORT) : 8080,
-//     forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
-//     disableStats: true,
-//     enabledTransports: ['ws', 'wss'],
-// });
-
-// use this in component
-// import { useEcho } from '@laravel/echo-react';
-
-// // In your component
-// const echo = useEcho();
-
-// useEffect(() => {
-//     if (!conversationId) return;
-
-//     const channel = echo.channel(`chat.${conversationId}`);
 
 //     channel.listen('.new.message', (event: Message) => {
 //         onReceive(event);

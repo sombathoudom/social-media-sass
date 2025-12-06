@@ -1,10 +1,14 @@
 import Echo from 'laravel-echo';
+import Pusher from 'pusher-js';
 
 declare global {
     interface Window {
-        Echo: Echo;
+        Echo: Echo<any>;
+        Pusher: typeof Pusher;
     }
 }
+
+window.Pusher = Pusher;
 
 window.Echo = new Echo({
     broadcaster: 'reverb',
@@ -12,7 +16,6 @@ window.Echo = new Echo({
     wsHost: import.meta.env.VITE_REVERB_HOST ?? window.location.hostname,
     wsPort: Number(import.meta.env.VITE_REVERB_PORT ?? 8080),
     wssPort: Number(import.meta.env.VITE_REVERB_PORT ?? 8080),
-    forceTLS: false,
-    encrypted: false,
+    forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'http') === 'https',
     enabledTransports: ['ws', 'wss'],
 });

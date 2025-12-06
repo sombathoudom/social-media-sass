@@ -4,6 +4,9 @@ namespace App\Services\Facebook;
 
 use App\Models\FacebookAutoReplyRule;
 use App\Models\FacebookPage;
+use App\Models\FacebookPageUser;
+use App\Models\FacebookConversation;
+use App\Models\FacebookMessage;
 use App\Jobs\Facebook\ProcessAutoReplyJob;
 use App\Jobs\Facebook\ProcessAutoReplyInboxJob;
 use App\Jobs\Facebook\ProcessLiveCommentJob;
@@ -51,14 +54,19 @@ class WebhookHandlerService
         }
 
         foreach ($payload['entry'] as $entry) {
+            $pageId = $entry['id'] ?? null; // Page ID from entry level
 
             /* ------------------------------------------------------
              * HANDLE COMMENTS
              * ------------------------------------------------------ */
             if (isset($entry['changes'])) {
                 foreach ($entry['changes'] as $change) {
-                    if ($change['field'] === 'comments') {
-                        $this->handleCommentEvent($change);
+                    // Facebook sends comment events under 'feed' or 'comments' field
+                    if (in_array($change['field'], ['comments', 'feed'])) {
+                        // Check if this is actually a comment event
+                        if (isset($change['value']['item']) && $change['value']['item'] === 'comment') {
+                            $this->handleCommentEvent($change, $pageId);
+                        }
                     }
                 }
             }
@@ -88,24 +96,37 @@ class WebhookHandlerService
     /* ------------------------------------------------------
      * COMMENTS (AUTO REPLY)
      * ------------------------------------------------------ */
-    protected function handleCommentEvent($change)
+    protected function handleCommentEvent($change, $pageId = null)
     {
         $value = $change['value'];
 
-        $pageId = $value['page_id'];   // FB Page ID
+        // Page ID can come from value or from entry level (passed as parameter)
+        $pageId = $value['page_id'] ?? $pageId;
         $postId = $value['post_id'] ?? null;
         $commentId = $value['comment_id'];
-        $senderId = $value['from']['id'];
+        $senderId = $value['from']['id'] ?? null;
         $message = $value['message'] ?? '';
 
         if (!$pageId || !$senderId || !$commentId) {
+            Log::warning("Missing required comment data", [
+                'page_id' => $pageId,
+                'sender_id' => $senderId,
+                'comment_id' => $commentId,
+            ]);
             return;
         }
 
         // Avoid replying to ourselves
         if ($senderId === $pageId) {
+            Log::info("Skipping self-comment", ['comment_id' => $commentId]);
             return;
         }
+
+        Log::info("Processing comment", [
+            'comment_id' => $commentId,
+            'page_id' => $pageId,
+            'message' => $message,
+        ]);
 
         // Process with new Comment Automation Service
         $this->commentAutomation->processComment(
@@ -117,7 +138,10 @@ class WebhookHandlerService
 
         // Keep old auto-reply rules for backward compatibility
         $page = FacebookPage::where('page_id', $pageId)->first();
-        if (!$page) return;
+        if (!$page) {
+            Log::warning("Page not found in database", ['page_id' => $pageId]);
+            return;
+        }
 
         $rules = FacebookAutoReplyRule::where('facebook_page_id', $page->id)
             ->where('type', 'comment')
@@ -139,10 +163,16 @@ class WebhookHandlerService
     }
 
     /* ------------------------------------------------------
-     * INBOX MESSAGES (AUTO REPLY)
+     * INBOX MESSAGES (AUTO REPLY + STORE MESSAGE)
      * ------------------------------------------------------ */
     protected function handleInboxEvent($event)
     {
+        Log::info("Processing inbox message event", ['event' => $event]);
+
+        // First, store the message in the database
+        $this->handleMessagingEvent($event);
+
+        // Then process auto-reply rules
         $senderId = $event['sender']['id'];
         $pageId = $event['recipient']['id'];
         $message = $event['message']['text'] ?? null;

@@ -16,5 +16,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('dashboard');
 });
 
+Route::get('/privacy-policy', [\App\Http\Controllers\PrivacyPolicyController::class, 'show'])
+    ->name('privacy-policy');
+
 require __DIR__.'/settings.php';
 require __DIR__.'/facebook.php';

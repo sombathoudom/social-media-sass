@@ -42,8 +42,8 @@ class FacebookWebhookController extends Controller
                  Log::info("FB RAW: " . $request->getContent());
                 Log::info("FB ARRAY:", $request->all());
             // // Dispatch to your service or handle directly here
-            // app(\App\Services\Facebook\WebhookHandlerService::class)
-            //     ->handleEvent($request->all());
+            app(\App\Services\Facebook\WebhookHandlerService::class)
+                ->handleEvent($request->all());
 
             return response("EVENT_RECEIVED", 200);
         }
