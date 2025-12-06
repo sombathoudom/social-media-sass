@@ -29,6 +29,19 @@ const PageCard: FC<Props> = ({ page, active }) => {
     });
   };
 
+  const handleSubscribeWebhook = () => {
+    const toastId = toast.loading('Subscribing to webhook...');
+    
+    router.post(`/facebook/pages/${page.id}/subscribe-webhook`, {}, {
+      onSuccess: () => {
+        toast.success('Page subscribed to webhook!', { id: toastId });
+      },
+      onError: () => {
+        toast.error('Failed to subscribe to webhook', { id: toastId });
+      },
+    });
+  };
+
   // Facebook Graph API URL for page profile picture
   const pageAvatarUrl = `https://graph.facebook.com/${page.page_id}/picture?type=large`;
 
@@ -49,15 +62,37 @@ const PageCard: FC<Props> = ({ page, active }) => {
       <CardContent className="space-y-3">
         <p className="text-sm text-gray-500">Page ID: {page.page_id}</p>
 
-        {!active ? (
-          <Button onClick={handleSwitch} className="w-full">
-            Set Active
-          </Button>
-        ) : (
-          <Button disabled variant="outline" className="w-full">
-            Current Active Page
-          </Button>
-        )}
+        <div className="flex items-center gap-2 text-sm">
+          <span className="font-medium">Webhook:</span>
+          {page.webhook_subscribed ? (
+            <Badge variant="default" className="text-xs">Subscribed</Badge>
+          ) : (
+            <Badge variant="secondary" className="text-xs">Not Subscribed</Badge>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          {!active ? (
+            <Button onClick={handleSwitch} className="w-full">
+              Set Active
+            </Button>
+          ) : (
+            <Button disabled variant="outline" className="w-full">
+              Current Active Page
+            </Button>
+          )}
+
+          {!page.webhook_subscribed && (
+            <Button 
+              onClick={handleSubscribeWebhook} 
+              variant="secondary" 
+              size="sm"
+              className="w-full"
+            >
+              Subscribe to Webhook
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Log;
 class SyncPagesAction
 {
     public function __construct(
-        protected FacebookService $fb
+        protected FacebookService $fb,
+        protected SubscribePageToWebhookAction $subscribe
     ) {}
 
     public function execute($user, $isForce=false)
@@ -28,7 +29,7 @@ class SyncPagesAction
         $pages = $this->fb->getUserPages($user);
 
         foreach ($pages as $p) {
-            FacebookPage::updateOrCreate(
+            $page = FacebookPage::updateOrCreate(
                 [
                     'user_id' => $user->id,
                     'page_id' => $p['id'],
@@ -38,6 +39,9 @@ class SyncPagesAction
                     'access_token' => encrypt($p['access_token']),
                 ]
             );
+
+            // Auto-subscribe page to webhook
+            $this->subscribe->execute($page);
         }
 
         return FacebookPage::where('user_id', $user->id)->get();

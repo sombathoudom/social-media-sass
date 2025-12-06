@@ -68,6 +68,12 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/facebook/pages/sync', [PageController::class, 'syncMorePages'])
         ->name('fb.pages.sync');
 
+    Route::post('/facebook/pages/subscribe-webhook', [PageController::class, 'subscribeWebhook'])
+        ->name('fb.pages.subscribe-webhook');
+
+    Route::post('/facebook/pages/{page}/subscribe-webhook', [PageController::class, 'subscribePageWebhook'])
+        ->name('fb.pages.subscribe-page-webhook');
+
     Route::post('/facebook/pages/switch', [PageController::class, 'switch'])
         ->name('fb.pages.switch');
 
@@ -195,5 +201,5 @@ Route::middleware(['auth'])->group(function () {
 //     return response('METHOD_NOT_ALLOWED', 405);
 // });
 
-Route::match(['GET', 'POST'], '/facebook/webhook', [FacebookWebhookController::class, 'handle'])
-    ->name('facebook.webhook');
+// Route::match(['GET', 'POST'], '/facebook/webhook', [FacebookWebhookController::class, 'handle'])
+//     ->name('facebook.webhook');

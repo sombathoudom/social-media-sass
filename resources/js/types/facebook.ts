@@ -5,6 +5,8 @@ export interface FacebookPage {
   name: string;
   access_token: string;
   active?: boolean;
+  webhook_subscribed?: boolean;
+  webhook_fields?: string[];
 }
 
 export interface AutoReplyRule {

@@ -17,6 +17,8 @@ class FacebookService
             'app_id'                => config('services.facebook.app_id'),
             'app_secret'            => config('services.facebook.app_secret'),
             'default_graph_version' => 'v19.0',
+            'enable_beta_mode'      => false,
+            'http_client_handler'   => null,
         ]);
     }
 
@@ -239,6 +241,56 @@ class FacebookService
         } catch (Exception $e) {
             Log::error("FB Debug Error: " . $e->getMessage());
             return null;
+        }
+    }
+
+    /* ------------------------------------------------------
+     *  GENERIC API METHOD
+     * ------------------------------------------------------ */
+
+    /**
+     * Make a generic API call to Facebook Graph API
+     * 
+     * @param string $endpoint The API endpoint (e.g., '/me/accounts')
+     * @param string $method HTTP method (GET, POST, DELETE)
+     * @param array $params Parameters to send
+     * @param string $accessToken Access token to use
+     * @return array Decoded response body
+     */
+    public function api(string $endpoint, string $method = 'GET', array $params = [], string $accessToken = null)
+    {
+        try {
+            $method = strtoupper($method);
+            
+            // Build the full URL
+            $baseUrl = 'https://graph.facebook.com/v19.0';
+            $endpoint = ltrim($endpoint, '/');
+            $url = "{$baseUrl}/{$endpoint}";
+            
+            // Add access token to params
+            $params['access_token'] = $accessToken;
+            
+            // Make HTTP request using Laravel's HTTP client
+            $response = match($method) {
+                'GET' => \Illuminate\Support\Facades\Http::get($url, $params),
+                'POST' => \Illuminate\Support\Facades\Http::post($url, $params),
+                'DELETE' => \Illuminate\Support\Facades\Http::delete($url, $params),
+                default => throw new Exception("Unsupported HTTP method: {$method}"),
+            };
+
+            if ($response->failed()) {
+                $error = $response->json('error.message', 'Unknown error');
+                throw new Exception($error);
+            }
+
+            return $response->json();
+
+        } catch (Exception $e) {
+            Log::error("FB API Error: " . $e->getMessage(), [
+                'endpoint' => $endpoint,
+                'method' => $method,
+            ]);
+            throw $e;
         }
     }
 }

@@ -5,6 +5,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { toast } from 'sonner';
 import fb from '@/routes/fb';
 
 interface FacebookProfile {
@@ -35,6 +36,21 @@ export default function Pages({ pages, active_page_id, facebook_profile }: Props
     window.location.href = fb.connect().url;
   };
 
+  const handleSubscribeAll = () => {
+    const toastId = toast.loading('Subscribing all pages to webhook...');
+    
+    router.post('/facebook/pages/subscribe-webhook', {}, {
+      onSuccess: () => {
+        toast.success('All pages subscribed to webhook!', { id: toastId });
+      },
+      onError: () => {
+        toast.error('Failed to subscribe pages', { id: toastId });
+      },
+    });
+  };
+
+  const unsubscribedCount = pages.filter((p) => !p.webhook_subscribed).length;
+
   return (
     <AppLayout>
       <Head title="Pages" />
@@ -64,9 +80,16 @@ export default function Pages({ pages, active_page_id, facebook_profile }: Props
           <>
             <div className="flex justify-between items-center">
               <h1 className="text-3xl font-bold">Your Facebook Pages</h1>
-              <Button variant="outline" onClick={handleSyncPages}>
-                Sync Pages
-              </Button>
+              <div className="flex gap-2">
+                {unsubscribedCount > 0 && (
+                  <Button variant="secondary" onClick={handleSubscribeAll}>
+                    Subscribe All to Webhook ({unsubscribedCount})
+                  </Button>
+                )}
+                <Button variant="outline" onClick={handleSyncPages}>
+                  Sync Pages
+                </Button>
+              </div>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

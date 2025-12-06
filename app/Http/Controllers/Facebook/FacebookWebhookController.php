@@ -2,27 +2,32 @@
 
 namespace App\Http\Controllers\Facebook;
 
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 use App\Services\Facebook\WebhookHandlerService;
-use Illuminate\Http\Request;
 
 class FacebookWebhookController extends Controller
 {
-    public function verify(Request $request, WebhookHandlerService $service)
-    {
-        return $service->verifyWebhook($request);
-    }
+    // public function verify(Request $request, WebhookHandlerService $service)
+    // {
+    //     return $service->verifyWebhook($request);
+    // }
 
     public function handle(Request $request)
     {
+        Log::info("=== FACEBOOK WEBHOOK RECEIVED ===");
+
+        Log::info($request->getContent());
+       
         // ------------------------------------------------------------
         // 1) HANDLE VERIFY WEBHOOK (Facebook GET request)
         // ------------------------------------------------------------
         if ($request->isMethod('get')) {
-            $verifyToken = config('services.facebook.verify_token');
-            $mode        = $request->input('hub.mode');
-            $token       = $request->input('hub.verify_token');
-            $challenge   = $request->input('hub.challenge');
+            $verifyToken = "fb_webhook_verify_123456";
+            $mode        = $request->input('hub_mode');
+            $token       = $request->input('hub_verify_token');
+            $challenge   = $request->input('hub_challenge');
 
             if ($mode === 'subscribe' && $token === $verifyToken) {
                 return response($challenge, 200);
@@ -30,15 +35,15 @@ class FacebookWebhookController extends Controller
 
             return response("Invalid verify token", 403);
         }
-
         // ------------------------------------------------------------
         // 2) HANDLE EVENTS (Facebook POST request)
         // ------------------------------------------------------------
         if ($request->isMethod('post')) {
-
-            // Dispatch to your service or handle directly here
-            app(\App\Services\Facebook\WebhookHandlerService::class)
-                ->handleEvent($request->all());
+                 Log::info("FB RAW: " . $request->getContent());
+                Log::info("FB ARRAY:", $request->all());
+            // // Dispatch to your service or handle directly here
+            // app(\App\Services\Facebook\WebhookHandlerService::class)
+            //     ->handleEvent($request->all());
 
             return response("EVENT_RECEIVED", 200);
         }
