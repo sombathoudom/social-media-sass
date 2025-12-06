@@ -32,9 +32,15 @@ const TemplateModal: FC<Props> = ({ conversation, onClose, onSelect }) => {
     useEffect(() => {
         const load = async () => {
             setLoading(true);
-            const res = await axios.get(fb.templates.index().url);
-            setTemplates(res.data);
-            setLoading(false);
+            try {
+                const res = await axios.get(fb.commentTemplates.index().url);
+                setTemplates(res.data);
+            } catch (error) {
+                console.error('Failed to load templates:', error);
+                setTemplates([]);
+            } finally {
+                setLoading(false);
+            }
         };
 
         load();

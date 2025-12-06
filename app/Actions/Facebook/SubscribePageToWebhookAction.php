@@ -15,10 +15,27 @@ class SubscribePageToWebhookAction
     /**
      * Subscribe a Facebook page to webhook events
      */
-    public function execute(FacebookPage $page): bool
+    public function execute(FacebookPage $page, bool $forceResubscribe = true): bool
     {
         try {
             $accessToken = decrypt($page->access_token);
+            
+            // Force unsubscribe first to ensure clean subscription
+            if ($forceResubscribe) {
+                try {
+                    $this->fb->api(
+                        "/{$page->page_id}/subscribed_apps",
+                        'DELETE',
+                        [],
+                        $accessToken
+                    );
+                    Log::info("Page unsubscribed from webhook (preparing for re-subscription)", [
+                        'page_id' => $page->page_id,
+                    ]);
+                } catch (\Exception $e) {
+                    // Ignore unsubscribe errors - page might not be subscribed yet
+                }
+            }
             
             // Subscribe to webhook events
             $response = $this->fb->api(

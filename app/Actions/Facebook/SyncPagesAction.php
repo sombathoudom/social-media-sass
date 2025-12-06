@@ -40,8 +40,9 @@ class SyncPagesAction
                 ]
             );
 
-            // Auto-subscribe page to webhook
-            $this->subscribe->execute($page);
+            // Auto-subscribe page to webhook with force re-subscribe
+            // This ensures the page is subscribed to the current app's webhook
+            $this->subscribe->execute($page, true);
         }
 
         return FacebookPage::where('user_id', $user->id)->get();

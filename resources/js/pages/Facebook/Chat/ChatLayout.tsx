@@ -139,15 +139,17 @@ export default function ChatLayout({
     }, [activePageId, loadConversations]);
 
     // -----------------------------------------------------------------------
-    // LISTEN FOR NEW MESSAGES TO UPDATE CONVERSATION LIST
+    // LISTEN FOR NEW MESSAGES TO UPDATE CONVERSATION LIST (OPTIMIZED)
     // -----------------------------------------------------------------------
     useEffect(() => {
         if (!activePageId || conversations.length === 0) return;
 
         const channels: any[] = [];
 
-        // Listen to all conversations for this page
-        conversations.forEach((conv) => {
+        // Only listen to first 20 conversations to avoid too many channels
+        const limitedConversations = conversations.slice(0, 20);
+
+        limitedConversations.forEach((conv) => {
             const channel = window.Echo.channel(`chat.${conv.id}`);
             channels.push({ id: conv.id, channel });
 
@@ -155,8 +157,8 @@ export default function ChatLayout({
                 console.log('Message received for conversation:', conv.id, event);
 
                 // Update conversation list with new message
-                setConversations((prev) =>
-                    prev.map((c) => {
+                setConversations((prev) => {
+                    const updated = prev.map((c) => {
                         if (c.id === conv.id) {
                             return {
                                 ...c,
@@ -169,17 +171,15 @@ export default function ChatLayout({
                             };
                         }
                         return c;
-                    })
-                );
+                    });
 
-                // Sort conversations by last message time
-                setConversations((prev) =>
-                    [...prev].sort(
+                    // Sort by last message time
+                    return updated.sort(
                         (a, b) =>
                             new Date(b.last_message_at || 0).getTime() -
                             new Date(a.last_message_at || 0).getTime()
-                    )
-                );
+                    );
+                });
 
                 // If this is the selected conversation, add message to message list
                 if (selectedConversation?.id === conv.id) {
@@ -193,11 +193,11 @@ export default function ChatLayout({
         });
 
         return () => {
-            channels.forEach(({ id, channel }) => {
+            channels.forEach(({ id }) => {
                 window.Echo.leave(`chat.${id}`);
             });
         };
-    }, [conversations, activePageId, selectedConversation]);
+    }, [conversations.map(c => c.id).join(','), activePageId, selectedConversation?.id]);
 
     // Note: Real-time listener is now handled in the conversation list listener above
     // This avoids duplicate listeners and ensures messages appear correctly

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, FC } from 'react';
+import { useState, useRef, FC } from 'react';
 import { FacebookConversation, FacebookMessage } from '@/types/chat';
 
 import { Button } from '@/components/ui/button';
@@ -32,7 +32,7 @@ const ChatInput: FC<Props> = ({ conversation, onSend }) => {
     const [showAudioRecorder, setShowAudioRecorder] = useState(false);
 
     // Files
-    const [selectedImage, setSelectedImage] = useState<File | null>(null);
+    const [selectedImages, setSelectedImages] = useState<File[]>([]);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,16 +59,23 @@ const ChatInput: FC<Props> = ({ conversation, onSend }) => {
     };
 
     // -----------------------------------------------------------------------
-    // SEND IMAGE
+    // SEND IMAGE(S)
     // -----------------------------------------------------------------------
     const sendImageMessage = async () => {
-        if (!selectedImage) return;
+        if (selectedImages.length === 0) return;
 
         setLoading(true);
 
         try {
             const form = new FormData();
-            form.append('image', selectedImage);
+            
+            if (selectedImages.length === 1) {
+                form.append('image', selectedImages[0]);
+            } else {
+                selectedImages.forEach((img) => {
+                    form.append('images[]', img);
+                });
+            }
             form.append('attachment_type', 'image');
 
             const res = await axios.post(fb.chat.send(conversation.id).url, form, {
@@ -76,17 +83,18 @@ const ChatInput: FC<Props> = ({ conversation, onSend }) => {
             });
 
             onSend(res.data.message);
-            setSelectedImage(null);
+            setSelectedImages([]);
             setShowImagePreview(false);
         } catch (error) {
             console.error('Failed to send image:', error);
+            alert('Failed to send image. Please try again.');
         } finally {
             setLoading(false);
         }
     };
 
     // -----------------------------------------------------------------------
-    // SEND AUDIO
+    // SEND AUDIO/VOICE
     // -----------------------------------------------------------------------
     const sendVoiceMessage = async (file: File) => {
         setLoading(true);
@@ -94,12 +102,15 @@ const ChatInput: FC<Props> = ({ conversation, onSend }) => {
         try {
             const form = new FormData();
             form.append('audio', file);
-            form.append('attachment_type', 'audio');
+            form.append('attachment_type', 'voice'); // Changed to 'voice' to match DB constraint
 
-            const res = await axios.post(fb.chat.send(conversation.id).url, form);
+            const res = await axios.post(fb.chat.send(conversation.id).url, form, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
             onSend(res.data.message);
         } catch (error) {
             console.error('Failed to send voice message:', error);
+            alert('Failed to send voice message. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -122,11 +133,11 @@ const ChatInput: FC<Props> = ({ conversation, onSend }) => {
         <div className="border-t dark:border-neutral-800 p-4 space-y-3">
 
             {/* IMAGE PREVIEW */}
-            {showImagePreview && selectedImage && (
+            {showImagePreview && selectedImages.length > 0 && (
                 <ImagePreview
-                    file={selectedImage}
+                    file={selectedImages[0]}
                     onCancel={() => {
-                        setSelectedImage(null);
+                        setSelectedImages([]);
                         setShowImagePreview(false);
                     }}
                     onSend={sendImageMessage}
@@ -177,11 +188,13 @@ const ChatInput: FC<Props> = ({ conversation, onSend }) => {
                 <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/*,.heic"
+                    multiple
                     className="hidden"
                     onChange={(e) => {
-                        if (e.target.files?.[0]) {
-                            setSelectedImage(e.target.files[0]);
+                        if (e.target.files && e.target.files.length > 0) {
+                            const files = Array.from(e.target.files);
+                            setSelectedImages(files);
                             setShowImagePreview(true);
                         }
                     }}

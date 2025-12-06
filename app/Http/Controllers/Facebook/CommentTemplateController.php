@@ -13,7 +13,7 @@ class CommentTemplateController extends Controller
 {
     use AuthorizesRequests;
 
-    public function index()
+    public function index(Request $request)
     {
         $templates = CommentTemplate::where('user_id', auth()->id())
             ->with('facebookPage')
@@ -21,6 +21,11 @@ class CommentTemplateController extends Controller
             ->get();
 
         $pages = FacebookPage::where('user_id', auth()->id())->get();
+
+        // If it's an API request (for chat templates), return JSON
+        if ($request->wantsJson() || $request->is('api/*')) {
+            return response()->json($templates);
+        }
 
         return Inertia::render('Facebook/CommentTemplate/Index', [
             'templates' => $templates,

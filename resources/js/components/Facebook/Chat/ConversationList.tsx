@@ -31,11 +31,11 @@ const ConversationList: FC<Props> = ({
         <div className="w-80 border-r dark:border-neutral-800 h-full flex flex-col bg-white dark:bg-neutral-900">
 
             {/* Page Switcher */}
-            <div className="p-4 border-b dark:border-neutral-700">
+            <div className="p-4 border-b dark:border-neutral-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-neutral-800 dark:to-neutral-900">
                 <select
                     value={activePageId}
                     onChange={(e) => onSwitchPage(e.target.value)}
-                    className="w-full border rounded px-3 py-2 dark:bg-neutral-800 dark:text-white dark:border-neutral-700"
+                    className="w-full border rounded-lg px-3 py-2.5 dark:bg-neutral-800 dark:text-white dark:border-neutral-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                 >
                     {pages.map((page) => (
                         <option key={page.id} value={page.page_id}>
@@ -72,36 +72,40 @@ const ConversationList: FC<Props> = ({
                             <div
                                 key={conv.id}
                                 className={cn(
-                                    'flex items-center gap-3 px-4 py-3 border-b dark:border-neutral-800 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 transition',
+                                    'flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-blue-50 dark:hover:bg-neutral-800 transition-all duration-150 border-b border-neutral-100 dark:border-neutral-800',
                                     isActive &&
-                                        'bg-neutral-200 dark:bg-neutral-700'
+                                        'bg-blue-100 dark:bg-neutral-700 border-l-4 border-l-blue-600'
                                 )}
                                 onClick={() => onSelectConversation(conv)}
                             >
                                 {/* Avatar */}
-                                <Avatar>
-                                    <AvatarImage
-                                        src={conv.user.profile_pic}
-                                        alt={conv.user.name}
-                                    />
-                                </Avatar>
-
-                                {/* User Info */}
-                                <div className="flex-1">
-                                    <p className="font-medium dark:text-white">
-                                        {conv.user?.name || conv.user?.psid || 'Facebook User'}
-                                    </p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-300 truncate">
-                                        {conv.last_message || 'No messages yet'}
-                                    </p>
+                                <div className="relative flex-shrink-0">
+                                    <Avatar className="h-12 w-12">
+                                        <AvatarImage
+                                            src={conv.user.profile_pic}
+                                            alt={conv.user.name}
+                                            loading="lazy"
+                                        />
+                                    </Avatar>
+                                    {conv.unread_count > 0 && (
+                                        <div className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center shadow-lg">
+                                            {conv.unread_count > 9 ? '9+' : conv.unread_count}
+                                        </div>
+                                    )}
                                 </div>
 
-                                {/* Unread Badge */}
-                                {conv.unread_count > 0 && (
-                                    <span className="bg-blue-600 text-white text-xs font-bold rounded-full px-2 py-1">
-                                        {conv.unread_count}
-                                    </span>
-                                )}
+                                {/* User Info */}
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-semibold dark:text-white text-sm truncate">
+                                        {conv.user?.name || conv.user?.psid || 'Facebook User'}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                        {conv.last_message || 'No messages yet'}
+                                    </p>
+                                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                                        {conv.last_message_at ? new Date(conv.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                    </p>
+                                </div>
                             </div>
                         );
                     })

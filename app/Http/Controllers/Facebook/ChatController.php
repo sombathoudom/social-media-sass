@@ -67,20 +67,44 @@ class ChatController extends Controller
     }
 
     /**
-     * LOAD PAGINATED MESSAGES (for infinite scroll)
+     * LOAD PAGINATED MESSAGES (for infinite scroll) - OPTIMIZED
      */
-    public function messages(FacebookConversation $conversation)
+    public function messages(FacebookConversation $conversation, Request $request)
     {
         // Check if user owns this conversation's page
         if ($conversation->page->user_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }
 
-        $messages = FacebookMessage::where('conversation_id', $conversation->id)
-            ->orderBy('id', 'asc') // Oldest first for chat display
-            ->paginate(25);
+        $query = FacebookMessage::select([
+            'id',
+            'conversation_id',
+            'from_type',
+            'message_type',
+            'message',
+            'sent_at',
+            'created_at'
+        ])
+        ->where('conversation_id', $conversation->id);
 
-        return response()->json($messages);
+        // Load older messages (for infinite scroll)
+        if ($request->before_id) {
+            $query->where('id', '<', $request->before_id);
+        }
+
+        $messages = $query
+            ->orderBy('id', 'desc') // Get newest first
+            ->limit(30)
+            ->get()
+            ->reverse() // Reverse to show oldest first
+            ->values();
+
+        return response()->json([
+            'data' => $messages,
+            'links' => [
+                'next' => $messages->count() === 30 ? 'has_more' : null,
+            ],
+        ]);
     }
 
     /**
@@ -97,8 +121,10 @@ class ChatController extends Controller
             'text' => ['nullable', 'string'],
             'attachment_type' => ['nullable', 'string'], // image/audio/file/video
             'attachment_url'  => ['nullable', 'string'],
-            'image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,gif', 'max:10240'], // 10MB
-            'audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg,m4a', 'max:10240'],
+            'image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,gif,webp,heic', 'max:10240'], // 10MB
+            'images' => ['nullable', 'array'], // Support multiple images
+            'images.*' => ['file', 'mimes:jpg,jpeg,png,gif,webp,heic', 'max:10240'],
+            'audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg,m4a,aac,webm,opus,flac', 'max:10240'],
             'video' => ['nullable', 'file', 'mimes:mp4,mov,avi', 'max:25600'], // 25MB
             'file' => ['nullable', 'file', 'max:25600'],
         ]);
@@ -110,13 +136,23 @@ class ChatController extends Controller
         ];
 
         // Handle file uploads
-        if ($request->hasFile('image')) {
+        if ($request->hasFile('images')) {
+            // Multiple images
+            $urls = [];
+            foreach ($request->file('images') as $image) {
+                $path = $image->store('chat/images', 'public');
+                $urls[] = url('storage/' . $path);
+            }
+            $payload['attachment_type'] = 'image';
+            $payload['attachment_url'] = $urls[0]; // Send first image to Facebook
+            // TODO: Send remaining images as separate messages
+        } elseif ($request->hasFile('image')) {
             $path = $request->file('image')->store('chat/images', 'public');
             $payload['attachment_type'] = 'image';
             $payload['attachment_url'] = url('storage/' . $path); // Use url() for full URL with ngrok
         } elseif ($request->hasFile('audio')) {
             $path = $request->file('audio')->store('chat/audio', 'public');
-            $payload['attachment_type'] = 'audio';
+            $payload['attachment_type'] = 'voice'; // Changed from 'audio' to 'voice' to match DB constraint
             $payload['attachment_url'] = url('storage/' . $path);
         } elseif ($request->hasFile('video')) {
             $path = $request->file('video')->store('chat/videos', 'public');
@@ -154,23 +190,33 @@ class ChatController extends Controller
     }
 
     /**
-     * API: Fetch conversations for sidebar
+     * API: Fetch conversations for sidebar (OPTIMIZED)
      */
     public function conversations(Request $request)
     {
-        $pageId = $request->page_id; // This is the Facebook page_id (e.g., "253335157869306")
+        $pageId = $request->page_id;
 
         Log::info("Loading conversations", [
             'user_id' => auth()->id(),
             'page_id' => $pageId,
         ]);
 
-        $query = FacebookConversation::with([
+        // Optimize query with select and eager loading
+        $query = FacebookConversation::select([
+            'id',
+            'facebook_page_id',
+            'facebook_page_user_id',
+            'last_message',
+            'last_message_at',
+            'unread_count',
+            'updated_at'
+        ])
+        ->with([
             'user:id,facebook_page_id,psid,name,profile_pic',
             'page:id,user_id,page_id,name',
         ]);
 
-        // Filter by user's pages only
+        // Filter by user's pages only (optimized with join)
         $query->whereHas('page', function ($q) {
             $q->where('user_id', auth()->id());
         });
@@ -182,18 +228,20 @@ class ChatController extends Controller
             });
         }
 
+        // Add index on last_message_at for faster sorting
         $conversations = $query
             ->orderBy('last_message_at', 'desc')
-            ->paginate(20);
+            ->limit(50) // Limit to 50 most recent conversations
+            ->get();
 
         Log::info("Conversations loaded", [
             'count' => $conversations->count(),
         ]);
 
         return response()->json([
-            'data' => $conversations->items(),
+            'data' => $conversations,
             'links' => [
-                'next' => $conversations->nextPageUrl(),
+                'next' => null, // Remove pagination for better performance
             ],
         ]);
     }

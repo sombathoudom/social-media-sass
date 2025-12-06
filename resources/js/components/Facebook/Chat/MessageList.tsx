@@ -136,10 +136,11 @@ const MessageList: FC<Props> = ({
                 {/* Message Bubble */}
                 <div
                     className={cn(
-                        'max-w-[70%] p-3 rounded-lg break-words',
+                        'max-w-[70%] rounded-2xl break-words shadow-sm',
+                        msg.message_type === 'image' || msg.message_type === 'video' ? 'p-1' : 'px-4 py-2.5',
                         isMine
                             ? 'bg-blue-600 text-white'
-                            : 'bg-neutral-200 dark:bg-neutral-700 dark:text-white'
+                            : 'bg-neutral-100 dark:bg-neutral-800 dark:text-white border border-neutral-200 dark:border-neutral-700'
                     )}
                 >
                     {/* TEXT MESSAGE */}
@@ -154,8 +155,9 @@ const MessageList: FC<Props> = ({
                     {msg.message_type === 'image' && msg.message && (
                         <img
                             src={msg.message}
-                            className="rounded-lg max-w-full"
+                            className="rounded-lg max-w-[280px] max-h-[280px] object-cover cursor-pointer hover:opacity-90 transition"
                             alt="image"
+                            onClick={() => window.open(msg.message, '_blank')}
                         />
                     )}
 
@@ -166,7 +168,7 @@ const MessageList: FC<Props> = ({
 
                     {/* VIDEO */}
                     {msg.message_type === 'video' && msg.message && (
-                        <video controls src={msg.message} className="rounded-lg max-w-full"></video>
+                        <video controls src={msg.message} className="rounded-lg max-w-[320px] max-h-[320px]"></video>
                     )}
                 </div>
 
