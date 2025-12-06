@@ -293,4 +293,30 @@ class FacebookService
             throw $e;
         }
     }
+
+    /**
+     * Get user profile by PSID
+     * 
+     * @param string $psid Page-scoped user ID
+     * @param string $accessToken Page access token
+     * @return array|null User profile data (name, profile_pic)
+     */
+    public function getUserProfile(string $psid, string $accessToken): ?array
+    {
+        try {
+            $response = $this->api(
+                "/{$psid}",
+                'GET',
+                ['fields' => 'name,profile_pic'],
+                $accessToken
+            );
+
+            return $response;
+        } catch (Exception $e) {
+            Log::warning("Failed to fetch user profile: " . $e->getMessage(), [
+                'psid' => $psid,
+            ]);
+            return null;
+        }
+    }
 }

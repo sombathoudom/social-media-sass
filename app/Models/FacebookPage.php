@@ -28,4 +28,19 @@ class FacebookPage extends Model
     {
         return $this->hasMany(FacebookBroadcast::class);
     }
+
+    public function conversations()
+    {
+        return $this->hasMany(FacebookConversation::class, 'facebook_page_id');
+    }
+
+    public function pageUsers()
+    {
+        return $this->hasMany(FacebookPageUser::class, 'facebook_page_id');
+    }
+
+    public function autoReplyCampaigns()
+    {
+        return $this->belongsToMany(AutoReplyCampaign::class, 'auto_reply_campaign_facebook_page');
+    }
 }

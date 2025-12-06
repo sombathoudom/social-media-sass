@@ -102,28 +102,105 @@ export default function ChatLayout({
     }, [activePageId, loadConversations]);
 
     // -----------------------------------------------------------------------
-    // REAL-TIME LISTENER
+    // RELOAD CONVERSATIONS WHEN TAB BECOMES VISIBLE
     // -----------------------------------------------------------------------
     useEffect(() => {
-        if (!selectedConversation) return;
+        const handleVisibilityChange = () => {
+            if (!document.hidden && activePageId) {
+                console.log('Tab visible again, reloading conversations');
+                loadConversations();
+            }
+        };
 
-        const id = selectedConversation.id;
-        const channel = window.Echo.channel(`chat.${id}`);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
 
-        channel.listen('.new.message', (event: FacebookMessage) => {
-            // Add message to state (this handles both incoming and outgoing messages)
-            setMessages((prev) => {
-                // Check if message already exists (avoid duplicates)
-                const exists = prev.some(msg => msg.id === event.id);
-                if (exists) return prev;
-                return [...prev, event];
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [activePageId, loadConversations]);
+
+    // -----------------------------------------------------------------------
+    // LISTEN FOR NEW CONVERSATIONS (page-level channel)
+    // -----------------------------------------------------------------------
+    useEffect(() => {
+        if (!activePageId) return;
+
+        const pageChannel = window.Echo.channel(`page.${activePageId}`);
+
+        pageChannel.listen('.new.conversation', (event: any) => {
+            console.log('New conversation detected:', event);
+            // Reload conversations to include the new one
+            loadConversations();
+        });
+
+        return () => {
+            window.Echo.leave(`page.${activePageId}`);
+        };
+    }, [activePageId, loadConversations]);
+
+    // -----------------------------------------------------------------------
+    // LISTEN FOR NEW MESSAGES TO UPDATE CONVERSATION LIST
+    // -----------------------------------------------------------------------
+    useEffect(() => {
+        if (!activePageId || conversations.length === 0) return;
+
+        const channels: any[] = [];
+
+        // Listen to all conversations for this page
+        conversations.forEach((conv) => {
+            const channel = window.Echo.channel(`chat.${conv.id}`);
+            channels.push({ id: conv.id, channel });
+
+            channel.listen('.new.message', (event: FacebookMessage) => {
+                console.log('Message received for conversation:', conv.id, event);
+
+                // Update conversation list with new message
+                setConversations((prev) =>
+                    prev.map((c) => {
+                        if (c.id === conv.id) {
+                            return {
+                                ...c,
+                                last_message: event.message,
+                                last_message_at: event.sent_at,
+                                unread_count:
+                                    selectedConversation?.id === c.id
+                                        ? c.unread_count
+                                        : c.unread_count + 1,
+                            };
+                        }
+                        return c;
+                    })
+                );
+
+                // Sort conversations by last message time
+                setConversations((prev) =>
+                    [...prev].sort(
+                        (a, b) =>
+                            new Date(b.last_message_at || 0).getTime() -
+                            new Date(a.last_message_at || 0).getTime()
+                    )
+                );
+
+                // If this is the selected conversation, add message to message list
+                if (selectedConversation?.id === conv.id) {
+                    setMessages((prev) => {
+                        const exists = prev.some(msg => msg.id === event.id);
+                        if (exists) return prev;
+                        return [...prev, event];
+                    });
+                }
             });
         });
 
         return () => {
-            window.Echo.leave(`chat.${id}`);
+            channels.forEach(({ id, channel }) => {
+                window.Echo.leave(`chat.${id}`);
+            });
         };
-    }, [selectedConversation]);
+    }, [conversations, activePageId, selectedConversation]);
+
+    // Note: Real-time listener is now handled in the conversation list listener above
+    // This avoids duplicate listeners and ensures messages appear correctly
 
     // -----------------------------------------------------------------------
     // UI RENDER
@@ -139,8 +216,19 @@ export default function ChatLayout({
                 selectedConversation={selectedConversation}
                 onSwitchPage={(pageId) => onSwitchPage(pageId)}
                 onSelectConversation={(conv) => {
+                    // Clear messages first to avoid mixing
+                    setMessages([]);
                     setSelectedConversation(conv);
                     loadMessages(conv.id);
+                    
+                    // Reset unread count in the conversation list
+                    setConversations((prev) =>
+                        prev.map((c) =>
+                            c.id === conv.id
+                                ? { ...c, unread_count: 0 }
+                                : c
+                        )
+                    );
                 }}
             />
 
@@ -152,6 +240,11 @@ export default function ChatLayout({
                             messages={messages}
                             loading={loadingMessages}
                             conversationId={selectedConversation.id}
+                            customerName={
+                                selectedConversation.user?.name ||
+                                selectedConversation.user?.psid ||
+                                'Customer'
+                            }
                             onLoadMore={() =>
                                 loadMoreMessages(selectedConversation.id)
                             }

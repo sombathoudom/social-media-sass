@@ -25,7 +25,7 @@ export interface FacebookMessage {
   id: number;
   conversation_id: number;
   from_type: 'page' | 'user';
-  message_type: 'text' | 'image' | 'voice' | 'emoji' | 'template';
+  message_type: 'text' | 'image' | 'audio' | 'voice' | 'video' | 'file' | 'emoji' | 'template';
   message: string | null;
   attachments?: any;
   sent_at: string;

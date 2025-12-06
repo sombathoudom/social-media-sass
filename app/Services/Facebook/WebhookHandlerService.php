@@ -23,6 +23,7 @@ class WebhookHandlerService
         protected ConversationService $conversationService,
         protected ChatService $chatService,
         protected CommentAutomationService $commentAutomation,
+        protected FacebookService $facebookService,
     ) {}
     /**
      * VERIFY WEBHOOK
@@ -269,21 +270,45 @@ class WebhookHandlerService
         // --------------------------------------------------------
         // 1. SYNC Facebook Page User (PSID + profile)
         // --------------------------------------------------------
+        // Fetch user profile from Facebook if we don't have it
+        $userData = [
+            'last_interaction_at' => now(),
+        ];
+
+        // Try to get name and profile pic from Facebook API using FacebookService
+        try {
+            $accessToken = decrypt($page->access_token);
+            $profile = $this->facebookService->getUserProfile($psid, $accessToken);
+            
+            if ($profile) {
+                $userData['name'] = $profile['name'] ?? null;
+                $userData['profile_pic'] = $profile['profile_pic'] ?? null;
+                
+                Log::info("User profile fetched successfully", [
+                    'psid' => $psid,
+                    'name' => $userData['name'],
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::warning("Failed to fetch user profile: " . $e->getMessage());
+        }
+
         $fbUser = FacebookPageUser::updateOrCreate(
             [
                 'facebook_page_id' => $page->id,
                 'psid'             => $psid,
             ],
-            [
-                'last_interaction_at' => now(),
-                'name'                => $event['sender']['name'] ?? null,
-                'profile_pic'         => $event['sender']['profile_pic'] ?? null,
-            ]
+            $userData
         );
 
         // --------------------------------------------------------
         // 2. FIND or CREATE Conversation
         // --------------------------------------------------------
+        $isNewConversation = !FacebookConversation::where([
+            'facebook_page_id'      => $page->id,
+            'facebook_page_user_id' => $fbUser->id,
+        ])->exists();
+
         $conversation = FacebookConversation::firstOrCreate(
             [
                 'facebook_page_id'      => $page->id,
@@ -293,6 +318,15 @@ class WebhookHandlerService
                 'unread_count' => 0,
             ]
         );
+
+        // Broadcast new conversation event if it's a new conversation
+        if ($isNewConversation) {
+            broadcast(new \App\Events\NewConversation($conversation))->toOthers();
+            Log::info("New conversation created and broadcasted", [
+                'conversation_id' => $conversation->id,
+                'page_id' => $page->page_id,
+            ]);
+        }
 
         // --------------------------------------------------------
         // 3. Store incoming message

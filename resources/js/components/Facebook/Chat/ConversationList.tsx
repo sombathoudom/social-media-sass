@@ -89,10 +89,10 @@ const ConversationList: FC<Props> = ({
                                 {/* User Info */}
                                 <div className="flex-1">
                                     <p className="font-medium dark:text-white">
-                                        {conv.user.name}
+                                        {conv.user?.name || conv.user?.psid || 'Facebook User'}
                                     </p>
                                     <p className="text-sm text-gray-500 dark:text-gray-300 truncate">
-                                        {conv.last_message ?? 'No messages yet'}
+                                        {conv.last_message || 'No messages yet'}
                                     </p>
                                 </div>
 
