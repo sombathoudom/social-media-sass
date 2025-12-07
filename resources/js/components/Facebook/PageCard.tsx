@@ -50,7 +50,7 @@ const PageCard: FC<Props> = ({ page, active }) => {
       <CardHeader>
         <div className="flex items-center gap-3">
           <Avatar className="h-12 w-12">
-            <AvatarImage src={pageAvatarUrl} alt={page.name} />
+            <AvatarImage src={pageAvatarUrl} alt={page.name} loading="lazy" />
             <AvatarFallback>{page.name.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex-1">

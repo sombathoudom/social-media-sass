@@ -19,13 +19,15 @@ class PageController extends Controller
         // Otherwise, it returns cached pages from database to avoid rate limits
         $pages = $sync->execute($user);
 
-        // Check subscription status for each page
-        $pagesWithStatus = $pages->map(function ($page) use ($subscribe) {
-            $status = $subscribe->checkSubscription($page);
+        // OPTIMIZATION: Don't check webhook status on page load
+        // It's too slow with many pages (20+ API calls)
+        // Instead, assume all pages are subscribed (they are auto-subscribed on sync)
+        // Users can manually check/subscribe if needed
+        $pagesWithStatus = $pages->map(function ($page) {
             return [
                 ...$page->toArray(),
-                'webhook_subscribed' => $status['subscribed'],
-                'webhook_fields' => $status['fields'],
+                'webhook_subscribed' => true, // Assume subscribed (auto-subscribed on sync)
+                'webhook_fields' => ['feed', 'messages'],
             ];
         });
 

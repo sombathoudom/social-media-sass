@@ -60,7 +60,7 @@ export default function Pages({ pages, active_page_id, facebook_profile }: Props
           <Card>
             <CardContent className="flex items-center gap-4 p-6">
               <Avatar className="h-16 w-16">
-                <AvatarImage src={facebook_profile.avatar || undefined} />
+                <AvatarImage src={facebook_profile.avatar || undefined} loading="lazy" />
                 <AvatarFallback>
                   {facebook_profile.name?.charAt(0).toUpperCase() || 'FB'}
                 </AvatarFallback>

@@ -111,6 +111,7 @@ export default function Edit({ campaign, pages, templates }: Props) {
                   value={data.name}
                   onChange={(e) => setData('name', e.target.value)}
                 />
+                {errors.name && <p className="text-sm text-red-500 mt-1">{errors.name}</p>}
               </div>
 
               <div>
@@ -143,6 +144,9 @@ export default function Edit({ campaign, pages, templates }: Props) {
                     </div>
                   )}
                 </div>
+                {errors.facebook_page_ids && (
+                  <p className="text-sm text-red-500 mt-1">{errors.facebook_page_ids}</p>
+                )}
               </div>
 
               <div className="flex items-center space-x-2">
@@ -152,6 +156,199 @@ export default function Edit({ campaign, pages, templates }: Props) {
                 />
                 <Label>Campaign is active</Label>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Offensive Comments */}
+          <Card>
+            <CardHeader>
+              <h2 className="text-xl font-semibold">Offensive Comment Detection</h2>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  checked={data.delete_offensive}
+                  onCheckedChange={(checked) => setData('delete_offensive', checked as boolean)}
+                />
+                <Label>Delete offensive comments</Label>
+              </div>
+
+              {data.delete_offensive && (
+                <>
+                  <div>
+                    <Label>Offensive Keywords (comma separated)</Label>
+                    <Input
+                      value={data.offensive_keywords}
+                      onChange={(e) => setData('offensive_keywords', e.target.value)}
+                      placeholder="spam, hate, offensive"
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Private Reply Template After Deletion</Label>
+                    <Select
+                      value={data.offensive_reply_template_id || undefined}
+                      onValueChange={(v) => setData('offensive_reply_template_id', v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select template (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {templates.map((template) => (
+                          <SelectItem key={template.id} value={String(template.id)}>
+                            {template.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      checked={data.allow_multiple_replies}
+                      onCheckedChange={(checked) =>
+                        setData('allow_multiple_replies', checked as boolean)
+                      }
+                    />
+                    <Label>Allow multiple replies to same user</Label>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Comment Reply Settings */}
+          <Card>
+            <CardHeader>
+              <h2 className="text-xl font-semibold">Comment Reply Settings</h2>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  checked={data.enable_comment_reply}
+                  onCheckedChange={(checked) => setData('enable_comment_reply', checked as boolean)}
+                />
+                <Label>Enable comment reply</Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  checked={data.like_comment}
+                  onCheckedChange={(checked) => setData('like_comment', checked as boolean)}
+                />
+                <Label>Like comments by page</Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  checked={data.hide_after_reply}
+                  onCheckedChange={(checked) => setData('hide_after_reply', checked as boolean)}
+                />
+                <Label>Hide comments after reply</Label>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Reply Type */}
+          <Card>
+            <CardHeader>
+              <h2 className="text-xl font-semibold">Reply Configuration</h2>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Reply Type</Label>
+                <Select
+                  value={data.reply_type}
+                  onValueChange={(v) => setData('reply_type', v as 'ai' | 'generic' | 'filtered')}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ai">Automated by AI</SelectItem>
+                    <SelectItem value="generic">Generic message for all</SelectItem>
+                    <SelectItem value="filtered">Filter by word/sentence</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {data.reply_type === 'filtered' && (
+                <>
+                  <div>
+                    <Label>Match Type</Label>
+                    <Select
+                      value={data.match_type}
+                      onValueChange={(v) => setData('match_type', v as 'exact' | 'any')}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="exact">Exact match</SelectItem>
+                        <SelectItem value="any">Any match</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label>Filter Keywords (comma separated)</Label>
+                    <Input
+                      value={data.filter_keywords}
+                      onChange={(e) => setData('filter_keywords', e.target.value)}
+                      placeholder="price, info, contact"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div>
+                <Label>Comment Reply Message</Label>
+                <Textarea
+                  value={data.comment_reply_message}
+                  onChange={(e) => setData('comment_reply_message', e.target.value)}
+                  placeholder="Thank you for your comment!"
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label>Image URL (optional)</Label>
+                <Input
+                  value={data.comment_reply_image}
+                  onChange={(e) => setData('comment_reply_image', e.target.value)}
+                  placeholder="https://example.com/image.jpg"
+                />
+              </div>
+
+              <div>
+                <Label>Video URL (optional)</Label>
+                <Input
+                  value={data.comment_reply_video}
+                  onChange={(e) => setData('comment_reply_video', e.target.value)}
+                  placeholder="https://example.com/video.mp4"
+                />
+              </div>
+
+              <div>
+                <Label>Voice URL (optional)</Label>
+                <Input
+                  value={data.comment_reply_voice}
+                  onChange={(e) => setData('comment_reply_voice', e.target.value)}
+                  placeholder="https://example.com/voice.mp3"
+                />
+              </div>
+
+              {data.reply_type === 'filtered' && (
+                <div>
+                  <Label>No Match Reply (optional)</Label>
+                  <Textarea
+                    value={data.no_match_reply}
+                    onChange={(e) => setData('no_match_reply', e.target.value)}
+                    placeholder="Message when keywords don't match"
+                    rows={2}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
 
