@@ -233,9 +233,30 @@ export default function ChatLayout({
             />
 
             {/* Chat Window */}
-            <div className="flex flex-col flex-1 border-l dark:border-neutral-800">
+            <div className="flex flex-col flex-1 border-l dark:border-neutral-800 bg-gradient-to-b from-gray-50 to-white dark:from-neutral-900 dark:to-neutral-950">
                 {selectedConversation ? (
                     <>
+                        {/* Chat Header */}
+                        <div className="border-b dark:border-neutral-800 bg-white dark:bg-neutral-900 px-6 py-4 shadow-sm">
+                            <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
+                                    {(selectedConversation.user?.name || 'C').charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex-1">
+                                    <h2 className="font-semibold text-lg dark:text-white">
+                                        {selectedConversation.user?.name || selectedConversation.user?.psid || 'Customer'}
+                                    </h2>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        {selectedConversation.user?.psid ? `PSID: ${selectedConversation.user.psid.slice(0, 15)}...` : 'Facebook User'}
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Active</span>
+                                </div>
+                            </div>
+                        </div>
+
                         <MessageList
                             messages={messages}
                             loading={loadingMessages}
@@ -259,8 +280,14 @@ export default function ChatLayout({
                         />
                     </>
                 ) : (
-                    <div className="flex items-center justify-center flex-1 text-gray-500">
-                        Select a conversation to start chatting
+                    <div className="flex flex-col items-center justify-center flex-1 text-gray-500">
+                        <div className="h-24 w-24 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 flex items-center justify-center mb-6">
+                            <svg className="w-12 h-12 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">No Conversation Selected</h3>
+                        <p className="text-gray-500 dark:text-gray-400">Choose a conversation from the list to start messaging</p>
                     </div>
                 )}
             </div>

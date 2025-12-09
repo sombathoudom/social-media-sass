@@ -51,8 +51,10 @@ const ChatInput: FC<Props> = ({ conversation, onSend }) => {
 
             onSend(res.data.message);
             setText('');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to send message:', error);
+            const errorMessage = error.response?.data?.message || error.message || 'Failed to send message';
+            alert(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -135,12 +137,19 @@ const ChatInput: FC<Props> = ({ conversation, onSend }) => {
             {/* IMAGE PREVIEW */}
             {showImagePreview && selectedImages.length > 0 && (
                 <ImagePreview
-                    file={selectedImages[0]}
+                    files={selectedImages}
                     onCancel={() => {
                         setSelectedImages([]);
                         setShowImagePreview(false);
                     }}
                     onSend={sendImageMessage}
+                    onRemove={(index) => {
+                        const newImages = selectedImages.filter((_, i) => i !== index);
+                        setSelectedImages(newImages);
+                        if (newImages.length === 0) {
+                            setShowImagePreview(false);
+                        }
+                    }}
                 />
             )}
 
@@ -158,8 +167,14 @@ const ChatInput: FC<Props> = ({ conversation, onSend }) => {
                     conversation={conversation}
                     onClose={() => setShowTemplates(false)}
                     onSelect={(msg) => {
+                        // Auto-fill the text input with template message
                         setText(msg);
+                        // Close the modal
                         setShowTemplates(false);
+                        // Focus on the input field
+                        setTimeout(() => {
+                            document.querySelector<HTMLInputElement>('input[placeholder="Type your message..."]')?.focus();
+                        }, 100);
                     }}
                 />
             )}

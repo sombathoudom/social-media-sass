@@ -45,12 +45,23 @@ class ChatService
         // ----------------------------------------------------
         // Build Facebook payload
         // ----------------------------------------------------
+        // Check if conversation is within 24-hour window
+        $lastMessageAt = $conversation->last_message_at;
+        $isWithin24Hours = $lastMessageAt && now()->diffInHours($lastMessageAt) < 24;
+        
         $payload = [
             'recipient' => [
                 'id' => $recipient,
             ],
-            'messaging_type' => 'RESPONSE',
+            // Use UPDATE messaging type for messages outside 24-hour window
+            // This allows sending messages for customer service purposes
+            'messaging_type' => $isWithin24Hours ? 'RESPONSE' : 'UPDATE',
         ];
+        
+        // Add message tag for messages outside 24-hour window
+        if (!$isWithin24Hours) {
+            $payload['tag'] = 'ACCOUNT_UPDATE'; // Allows sending updates outside 24-hour window
+        }
 
         // TEXT ONLY
         if (!empty($data['text']) && empty($data['attachment_type'])) {
@@ -136,7 +147,20 @@ class ChatService
                 'response' => $response->json(),
             ]);
         } catch (\Throwable $e) {
-            Log::error('Facebook Send Message Error: ' . $e->getMessage(), [
+            $errorMessage = $e->getMessage();
+            
+            // Check if it's a 24-hour window error
+            if (str_contains($errorMessage, 'outside of allowed window')) {
+                Log::warning('Message outside 24-hour window', [
+                    'recipient' => $recipient,
+                    'last_message_at' => $lastMessageAt,
+                    'hours_since_last_message' => $lastMessageAt ? now()->diffInHours($lastMessageAt) : 'N/A',
+                ]);
+                
+                throw new \Exception('Cannot send message: The customer must message you first or within 24 hours of their last message. Facebook Messenger policy restricts sending messages outside this window.');
+            }
+            
+            Log::error('Facebook Send Message Error: ' . $errorMessage, [
                 'recipient' => $recipient,
                 'payload' => $payload,
             ]);
