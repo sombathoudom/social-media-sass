@@ -53,14 +53,16 @@ class ChatService
             'recipient' => [
                 'id' => $recipient,
             ],
-            // Use UPDATE messaging type for messages outside 24-hour window
-            // This allows sending messages for customer service purposes
-            'messaging_type' => $isWithin24Hours ? 'RESPONSE' : 'UPDATE',
+            // Use MESSAGE_TAG for messages outside 24-hour window with HUMAN_AGENT tag
+            // This requires the "Human Agent" permission from Facebook
+            'messaging_type' => $isWithin24Hours ? 'RESPONSE' : 'MESSAGE_TAG',
         ];
         
-        // Add message tag for messages outside 24-hour window
+        // Add HUMAN_AGENT tag for messages outside 24-hour window
+        // This tag allows human agents to respond to customer inquiries outside the 24-hour window
+        // Requires: "pages_messaging" permission + "Human Agent" feature approval
         if (!$isWithin24Hours) {
-            $payload['tag'] = 'ACCOUNT_UPDATE'; // Allows sending updates outside 24-hour window
+            $payload['tag'] = 'HUMAN_AGENT';
         }
 
         // TEXT ONLY
@@ -151,13 +153,18 @@ class ChatService
             
             // Check if it's a 24-hour window error
             if (str_contains($errorMessage, 'outside of allowed window')) {
-                Log::warning('Message outside 24-hour window', [
+                Log::warning('Message outside 24-hour window - HUMAN_AGENT permission may be required', [
                     'recipient' => $recipient,
                     'last_message_at' => $lastMessageAt,
                     'hours_since_last_message' => $lastMessageAt ? now()->diffInHours($lastMessageAt) : 'N/A',
                 ]);
                 
-                throw new \Exception('Cannot send message: The customer must message you first or within 24 hours of their last message. Facebook Messenger policy restricts sending messages outside this window.');
+                throw new \Exception('Cannot send message: This conversation is outside the 24-hour window. Please ensure your Facebook App has the "Human Agent" permission approved. Apply at: https://developers.facebook.com/docs/messenger-platform/policy/policy-overview/#human_agent');
+            }
+            
+            // Check if it's a tag error
+            if (str_contains($errorMessage, 'HUMAN_AGENT') || str_contains($errorMessage, 'tag')) {
+                throw new \Exception('HUMAN_AGENT tag not available. Please apply for the "Human Agent" permission in your Facebook App settings: https://developers.facebook.com/apps');
             }
             
             Log::error('Facebook Send Message Error: ' . $errorMessage, [
