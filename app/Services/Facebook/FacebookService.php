@@ -319,4 +319,141 @@ class FacebookService
             return null;
         }
     }
+
+    /**
+     * Get posts from a Facebook page
+     * 
+     * @param string $pageId Facebook page ID
+     * @param string $accessToken Page access token
+     * @param int $limit Number of posts to fetch
+     * @param string|null $after Cursor for pagination
+     * @return array
+     */
+    public function getPagePosts(string $pageId, string $accessToken, int $limit = 12, ?string $after = null): array
+    {
+        try {
+            $params = [
+                'fields' => 'id,message,full_picture,created_time,permalink_url,status_type,likes.summary(true),comments.summary(true)',
+                'limit' => $limit,
+            ];
+
+            if ($after) {
+                $params['after'] = $after;
+            }
+
+            $response = $this->api(
+                "/{$pageId}/feed",
+                'GET',
+                $params,
+                $accessToken
+            );
+
+            return [
+                'posts' => $response['data'] ?? [],
+                'paging' => $response['paging'] ?? null,
+            ];
+        } catch (Exception $e) {
+            Log::error("Failed to fetch page posts: " . $e->getMessage(), [
+                'page_id' => $pageId,
+            ]);
+            throw $e;
+        }
+    }
+
+
+    /**
+     * Create a post on Facebook page
+     * 
+     * @param string $pageId Facebook page ID
+     * @param string $accessToken Page access token
+     * @param array $data Post data (message, photo_paths, photo_captions, video_path)
+     * @return array
+     */
+    public function createPagePost(string $pageId, string $accessToken, array $data): array
+    {
+        try {
+            // Text-only post or post with message
+            if (empty($data['photo_paths']) && empty($data['video_path'])) {
+                $response = $this->fb->post("/{$pageId}/feed", [
+                    'message' => $data['message'] ?? '',
+                ], $accessToken);
+                
+                return $response->getDecodedBody();
+            }
+
+            // Video post
+            if (!empty($data['video_path'])) {
+                $videoPath = storage_path('app/public/' . $data['video_path']);
+                
+                $response = $this->fb->post("/{$pageId}/videos", [
+                    'description' => $data['message'] ?? '',
+                    'source' => $this->fb->videoToUpload($videoPath),
+                ], $accessToken);
+                
+                return $response->getDecodedBody();
+            }
+
+            // Single photo post
+            if (!empty($data['photo_paths']) && count($data['photo_paths']) === 1) {
+                $caption = $data['photo_captions'][0] ?? $data['message'] ?? '';
+                $photoPath = storage_path('app/public/' . $data['photo_paths'][0]);
+                
+                $response = $this->fb->post("/{$pageId}/photos", [
+                    'message' => $caption,
+                    'source' => $this->fb->fileToUpload($photoPath),
+                ], $accessToken);
+                
+                return $response->getDecodedBody();
+            }
+
+            // Multiple photos post (album)
+            if (!empty($data['photo_paths']) && count($data['photo_paths']) > 1) {
+                $photoCaptions = $data['photo_captions'] ?? [];
+                
+                // First, upload all photos with their individual captions and get their IDs
+                $photoIds = [];
+                foreach ($data['photo_paths'] as $index => $photoPath) {
+                    $caption = $photoCaptions[$index] ?? '';
+                    $fullPath = storage_path('app/public/' . $photoPath);
+                    
+                    $photoParams = [
+                        'source' => $this->fb->fileToUpload($fullPath),
+                        'published' => false, // Don't publish yet
+                    ];
+                    
+                    // Add caption if provided
+                    if (!empty($caption)) {
+                        $photoParams['message'] = $caption;
+                    }
+                    
+                    $photoResponse = $this->fb->post(
+                        "/{$pageId}/photos",
+                        $photoParams,
+                        $accessToken
+                    );
+                    
+                    $photoIds[] = ['media_fbid' => $photoResponse->getDecodedBody()['id']];
+                }
+
+                // Then create a post with all photos
+                $response = $this->fb->post("/{$pageId}/feed", [
+                    'message' => $data['message'] ?? '',
+                    'attached_media' => json_encode($photoIds),
+                ], $accessToken);
+                
+                return $response->getDecodedBody();
+            }
+
+            throw new Exception('Invalid post data');
+
+        } catch (Exception $e) {
+            Log::error("Failed to create page post: " . $e->getMessage(), [
+                'page_id' => $pageId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
+        }
+    }
+
 }

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Facebook\{
     FacebookAuthController,
     PageController,
+    PostController,
     AutoReplyController,
     BroadcastController,
     LiveStreamController,
@@ -44,6 +45,19 @@ Route::middleware(['auth'])
         
     });
 
+
+Route::middleware(['auth'])
+    ->prefix('facebook/pages/{page}/posts')
+    ->name('fb.posts.')
+    ->group(function () {
+        Route::get('/', [PostController::class, 'index'])->name('index');
+        Route::get('/fetch', [PostController::class, 'fetch'])->name('fetch');
+        Route::post('/create', [PostController::class, 'store'])->name('store');
+    });
+
+Route::middleware(['auth'])->group(function () {
+    Route::post('/api/upload', [\App\Http\Controllers\Api\UploadController::class, 'upload'])->name('api.upload');
+});
 
 Route::middleware(['auth'])->group(function () {
 
