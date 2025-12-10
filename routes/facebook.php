@@ -53,6 +53,14 @@ Route::middleware(['auth'])
         Route::get('/', [PostController::class, 'index'])->name('index');
         Route::get('/fetch', [PostController::class, 'fetch'])->name('fetch');
         Route::post('/create', [PostController::class, 'store'])->name('store');
+        Route::get('/{post}/comments', [PostController::class, 'comments'])->name('comments');
+    });
+
+Route::middleware(['auth'])
+    ->prefix('facebook/pages/{page}/comments')
+    ->name('fb.comments.')
+    ->group(function () {
+        Route::post('/{comment}/reply', [PostController::class, 'replyToComment'])->name('reply');
     });
 
 Route::middleware(['auth'])->group(function () {

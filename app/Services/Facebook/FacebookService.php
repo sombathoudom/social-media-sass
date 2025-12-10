@@ -181,17 +181,80 @@ class FacebookService
     }
 
     /* ------------------------------------------------------
-     * FETCH POST COMMENTS (for Live monitor)
+     * FETCH POST COMMENTS (for Live monitor and post viewer)
      * ------------------------------------------------------ */
-    public function getPostComments(string $postId, string $pageToken)
+    public function getPostComments(string $postId, string $pageToken, int $limit = 25, ?string $after = null, string $sort = 'chronological')
     {
         try {
-            $res = $this->fb->get("/{$postId}/comments?filter=stream&live_filter=no_filter", $pageToken);
-            return $res->getDecodedBody()['data'] ?? [];
+            // Map sort options to Facebook API parameters
+            $orderMap = [
+                'chronological' => 'chronological',
+                'reverse_chronological' => 'reverse_chronological',
+                'most_liked' => 'ranked', // Facebook uses 'ranked' for most liked
+            ];
+
+            // Build query parameters - include nested comments (replies)
+            $params = [
+                'fields' => 'id,message,created_time,from{id,name},like_count,permalink_url,comments{id,message,created_time,from{id,name},like_count}',
+                'limit' => $limit,
+                'order' => $orderMap[$sort] ?? 'chronological',
+            ];
+
+            if ($after) {
+                $params['after'] = $after;
+            }
+
+            // Build query string
+            $queryString = http_build_query($params);
+            $endpoint = "/{$postId}/comments?{$queryString}";
+
+            $res = $this->fb->get($endpoint, $pageToken);
+            $data = $res->getDecodedBody();
+
+            // Log the raw data for debugging
+            Log::info('Facebook comments raw data', [
+                'post_id' => $postId,
+                'sort' => $sort,
+                'comments_count' => count($data['data'] ?? []),
+                'sample_comment' => isset($data['data'][0]) ? $data['data'][0] : null,
+            ]);
+
+            // Return paginated format for new usage, or just data for legacy usage
+            if ($limit === 25 && $after === null && $sort === 'chronological') {
+                // Legacy usage (live monitor) - return just data
+                return $data['data'] ?? [];
+            } else {
+                // New usage (post viewer) - return with pagination
+                return [
+                    'comments' => $data['data'] ?? [],
+                    'paging' => $data['paging'] ?? null,
+                ];
+            }
 
         } catch (Exception $e) {
             Log::error("FB get comments error: {$e->getMessage()}");
-            return [];
+            return $limit === 25 && $after === null && $sort === 'chronological' ? [] : ['comments' => [], 'paging' => null];
+        }
+    }
+
+    /* ------------------------------------------------------
+     * REPLY TO COMMENT
+     * ------------------------------------------------------ */
+    public function replyToComment(string $commentId, string $message, string $pageToken)
+    {
+        try {
+            $response = $this->fb->post("/{$commentId}/comments", [
+                'message' => $message,
+            ], $pageToken);
+
+            return $response->getDecodedBody();
+
+        } catch (Exception $e) {
+            Log::error("FB reply to comment error: " . $e->getMessage(), [
+                'comment_id' => $commentId,
+                'message' => $message,
+            ]);
+            throw $e;
         }
     }
 
@@ -359,6 +422,8 @@ class FacebookService
             throw $e;
         }
     }
+
+
 
 
     /**

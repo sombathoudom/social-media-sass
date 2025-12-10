@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import CreatePostModal from '@/components/Facebook/CreatePostModal';
+import PostCommentsModal from '@/components/Facebook/PostCommentsModal';
 import { 
     Heart, 
     MessageCircle, 
@@ -44,6 +45,7 @@ export default function PostsIndex({ page }: Props) {
     const [after, setAfter] = useState<string | null>(null);
     const [hasMore, setHasMore] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [selectedPostForComments, setSelectedPostForComments] = useState<string | null>(null);
 
     const fetchPosts = async (cursor?: string) => {
         try {
@@ -142,6 +144,15 @@ export default function PostsIndex({ page }: Props) {
                     />
                 )}
 
+                {/* Comments Modal */}
+                {selectedPostForComments && (
+                    <PostCommentsModal
+                        postId={selectedPostForComments}
+                        pageId={page.id}
+                        onClose={() => setSelectedPostForComments(null)}
+                    />
+                )}
+
                 {/* Loading State */}
                 {loading && (
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -207,12 +218,15 @@ export default function PostsIndex({ page }: Props) {
                                                         {post.likes?.summary?.total_count || 0}
                                                     </span>
                                                 </div>
-                                                <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+                                                <button
+                                                    onClick={() => setSelectedPostForComments(post.id)}
+                                                    className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                                >
                                                     <MessageCircle className="h-4 w-4" />
                                                     <span className="text-sm font-medium">
                                                         {post.comments?.summary?.total_count || 0}
                                                     </span>
-                                                </div>
+                                                </button>
 
                                             </div>
 

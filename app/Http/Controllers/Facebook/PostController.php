@@ -64,6 +64,84 @@ class PostController extends Controller
     }
 
     /**
+     * Fetch comments for a specific post
+     */
+    public function comments(Request $request, $pageId, $postId)
+    {
+        $page = FacebookPage::where('id', $pageId)
+            ->where('user_id', auth()->id())
+            ->firstOrFail();
+
+        try {
+            $accessToken = decrypt($page->access_token);
+            $after = $request->query('after');
+            $sort = $request->query('sort', 'chronological');
+
+            $result = $this->facebookService->getPostComments(
+                $postId,
+                $accessToken,
+                12,
+                $after,
+                $sort
+            );
+
+            return response()->json($result);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching comments', [
+                'page_id' => $pageId,
+                'post_id' => $postId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'error' => 'An error occurred while fetching comments',
+            ], 500);
+        }
+    }
+
+    /**
+     * Reply to a comment
+     */
+    public function replyToComment(Request $request, $pageId, $commentId)
+    {
+        $page = FacebookPage::where('id', $pageId)
+            ->where('user_id', auth()->id())
+            ->firstOrFail();
+
+        $validated = $request->validate([
+            'message' => 'required|string|max:8000',
+        ]);
+
+        try {
+            $accessToken = decrypt($page->access_token);
+
+            $result = $this->facebookService->replyToComment(
+                $commentId,
+                $validated['message'],
+                $accessToken
+            );
+
+            return response()->json([
+                'success' => true,
+                'reply_id' => $result['id'] ?? null,
+                'message' => 'Reply sent successfully!',
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error replying to comment', [
+                'page_id' => $pageId,
+                'comment_id' => $commentId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'error' => 'Failed to send reply: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Create a new post on Facebook page
      */
     public function store(Request $request, $pageId)
