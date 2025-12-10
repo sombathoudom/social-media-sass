@@ -1,11 +1,20 @@
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
+import axios from 'axios';
 
 declare global {
     interface Window {
         Echo: Echo<any>;
         Pusher: typeof Pusher;
     }
+}
+
+// Configure axios to include CSRF token
+const token = document.head.querySelector('meta[name="csrf-token"]');
+if (token) {
+    axios.defaults.headers.common['X-CSRF-TOKEN'] = token.getAttribute('content') || '';
+} else {
+    console.error('CSRF token not found');
 }
 
 window.Pusher = Pusher;

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { router } from '@inertiajs/react';
+import axios from 'axios';
 // Using div with overflow instead of ScrollArea
 import { 
     MessageCircle, 
@@ -60,49 +60,45 @@ export default function PostCommentsModal({ postId, pageId, onClose }: Props) {
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const emojiPickerRef = useRef<HTMLDivElement>(null);
 
-    const fetchComments = (cursor?: string, sort?: SortOption) => {
-        if (cursor) {
-            setLoadingMore(true);
-        } else {
-            setLoading(true);
-        }
-
-        const params: Record<string, string> = {};
-        if (cursor) params.after = cursor;
-        if (sort) params.sort = sort;
-
-        router.get(`/facebook/pages/${pageId}/posts/${postId}/comments`, params, {
-            preserveState: true,
-            preserveScroll: true,
-            only: ['comments', 'paging'],
-            onSuccess: (page: any) => {
-                console.log('Comments API response:', page.props);
-
-                // Ensure we have valid comments data
-                const commentsData = page.props.comments || [];
-                
-                if (cursor) {
-                    setComments(prev => [...prev, ...commentsData]);
-                } else {
-                    setComments(commentsData);
-                }
-
-                setAfter(page.props.paging?.cursors?.after || null);
-                setHasMore(!!page.props.paging?.next);
-            },
-            onError: (errors) => {
-                console.error('Failed to fetch comments:', errors);
-                toast.error('Failed to load comments');
-                // Set empty state on error
-                if (!cursor) {
-                    setComments([]);
-                }
-            },
-            onFinish: () => {
-                setLoading(false);
-                setLoadingMore(false);
+    const fetchComments = async (cursor?: string, sort?: SortOption) => {
+        try {
+            if (cursor) {
+                setLoadingMore(true);
+            } else {
+                setLoading(true);
             }
-        });
+
+            const params = new URLSearchParams();
+            if (cursor) params.append('after', cursor);
+            if (sort) params.append('sort', sort);
+
+            const url = `/api/facebook/pages/${pageId}/posts/${postId}/comments?${params.toString()}`;
+            const response = await axios.get(url);
+
+            console.log('Comments API response:', response.data);
+
+            // Ensure we have valid comments data
+            const commentsData = response.data.comments || [];
+            
+            if (cursor) {
+                setComments(prev => [...prev, ...commentsData]);
+            } else {
+                setComments(commentsData);
+            }
+
+            setAfter(response.data.paging?.cursors?.after || null);
+            setHasMore(!!response.data.paging?.next);
+        } catch (error) {
+            console.error('Failed to fetch comments:', error);
+            toast.error('Failed to load comments');
+            // Set empty state on error
+            if (!cursor) {
+                setComments([]);
+            }
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
+        }
     };
 
     const handleSortChange = (newSort: SortOption) => {
@@ -121,7 +117,7 @@ export default function PostCommentsModal({ postId, pageId, onClose }: Props) {
         toast.success('Comments refreshed!');
     };
 
-    const handleReply = (commentId: string) => {
+    const handleReply = async (commentId: string) => {
         if (!replyText.trim()) {
             toast.error('Please enter a reply message');
             return;
@@ -129,32 +125,27 @@ export default function PostCommentsModal({ postId, pageId, onClose }: Props) {
 
         setSendingReply(true);
         
-        router.post(`/facebook/pages/${pageId}/comments/${commentId}/reply`, {
-            message: replyText,
-        }, {
-            preserveState: true,
-            preserveScroll: true,
-            onSuccess: (page: any) => {
-                console.log('Reply response:', page.props);
-                toast.success('Reply sent successfully!');
-                setReplyText('');
-                setReplyingTo(null);
-                setShowEmojiPicker(false);
-                
-                // Wait a moment for Facebook to process the reply, then refresh
-                setTimeout(() => {
-                    fetchComments(undefined, sortBy);
-                }, 2000);
-            },
-            onError: (errors) => {
-                console.error('Failed to send reply:', errors);
-                const errorMessage = Object.values(errors)[0] as string || 'Failed to send reply';
-                toast.error(errorMessage);
-            },
-            onFinish: () => {
-                setSendingReply(false);
-            }
-        });
+        try {
+            const response = await axios.post(`/api/facebook/pages/${pageId}/comments/${commentId}/reply`, {
+                message: replyText,
+            });
+
+            console.log('Reply response:', response.data);
+            toast.success('Reply sent successfully!');
+            setReplyText('');
+            setReplyingTo(null);
+            setShowEmojiPicker(false);
+            
+            // Wait a moment for Facebook to process the reply, then refresh
+            setTimeout(() => {
+                fetchComments(undefined, sortBy);
+            }, 2000);
+        } catch (error: any) {
+            console.error('Failed to send reply:', error);
+            toast.error(error.response?.data?.message || 'Failed to send reply');
+        } finally {
+            setSendingReply(false);
+        }
     };
 
     useEffect(() => {

@@ -85,11 +85,6 @@ class PostController extends Controller
                 $sort
             );
 
-            // For Inertia requests, return as props
-            if ($request->header('X-Inertia')) {
-                return response()->json($result);
-            }
-            
             return response()->json($result);
 
         } catch (\Exception $e) {
@@ -133,11 +128,6 @@ class PostController extends Controller
                 'message' => 'Reply sent successfully!',
             ];
 
-            // For Inertia requests, return as props
-            if ($request->header('X-Inertia')) {
-                return response()->json($response);
-            }
-            
             return response()->json($response);
 
         } catch (\Exception $e) {
