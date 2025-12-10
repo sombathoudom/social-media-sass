@@ -37,6 +37,7 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
+        'facebook_token', // Never expose Facebook token
         'two_factor_secret',
         'two_factor_recovery_codes',
         'remember_token',

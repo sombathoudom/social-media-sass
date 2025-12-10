@@ -26,10 +26,16 @@ class ProcessAutoReplyJob implements ShouldQueue
     public function handle(FacebookService $fb)
     {
         try {
+            // Fetch access token from database instead of payload
+            $page = \App\Models\FacebookPage::find($this->payload['page_db_id']);
+            if (!$page) {
+                throw new \Exception('Page not found');
+            }
+
             $fb->postComment(
                 $this->payload['comment_id'],
                 $this->payload['message'],
-                decrypt($this->payload['page_token'])
+                decrypt($page->access_token)
             );
 
         } catch (\Exception $e) {

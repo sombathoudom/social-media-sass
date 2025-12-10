@@ -156,7 +156,7 @@ class WebhookHandlerService
                     [
                         'comment_id' => $commentId,
                         'message' => $rule->reply_message,
-                        'page_token' => $page->access_token,
+                        'page_db_id' => $page->id,
                     ]
                 );
             }
@@ -196,7 +196,7 @@ class WebhookHandlerService
                     [
                         'recipient_id' => $senderId,
                         'message' => $rule->reply_message,
-                        'page_token' => $page->access_token,
+                        'page_db_id' => $page->id,
                     ]
                 );
             }
@@ -233,7 +233,7 @@ class WebhookHandlerService
                     [
                         'comment_id' => $commentId,
                         'message' => $rule->reply_message,
-                        'page_token' => $page->access_token,
+                        'page_db_id' => $page->id,
                     ]
                 );
             }

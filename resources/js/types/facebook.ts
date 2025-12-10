@@ -3,7 +3,6 @@ export interface FacebookPage {
   user_id: number;
   page_id: string;
   name: string;
-  access_token: string;
   active?: boolean;
   webhook_subscribed?: boolean;
   webhook_fields?: string[];

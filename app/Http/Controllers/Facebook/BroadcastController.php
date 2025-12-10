@@ -41,7 +41,7 @@ class BroadcastController extends Controller
         $action->execute(auth()->user(), [
             'page_id' => $page->page_id,
             'message' => $broadcast->message,
-            'page_token' => $page->access_token,
+            'page_db_id' => $page->id, // Pass page DB ID instead of token
         ]);
 
         return redirect()->route('fb.broadcast.index')

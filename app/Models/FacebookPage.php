@@ -14,6 +14,10 @@ class FacebookPage extends Model
         'active',
     ];
 
+    protected $hidden = [
+        'access_token', // Never expose access token in JSON
+    ];
+
     public function owner()
     {
         return $this->belongsTo(User::class, 'user_id');
