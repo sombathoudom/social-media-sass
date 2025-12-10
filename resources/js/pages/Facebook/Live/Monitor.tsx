@@ -7,7 +7,7 @@ import fb from '@/routes/fb';
 import LiveCommentFeed from '@/components/Facebook/LiveCommentFeed';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import axios from 'axios';
+import { router } from '@inertiajs/react';
 
 interface Props {
   pages: FacebookPage[];
@@ -18,15 +18,23 @@ export default function Monitor({ pages }: Props) {
   const [liveId, setLiveId] = useState('');
   const [comments, setComments] = useState<LiveComment[]>([]);
 
-  const fetchComments = async () => {
+  const fetchComments = () => {
     if (!pageId || !liveId) return;
 
-    const res = await axios.post(fb.live.fetch().url, {
+    router.post(fb.live.fetch().url, {
       page_id: pageId,
       live_id: liveId,
+    }, {
+      preserveState: true,
+      preserveScroll: true,
+      only: ['comments'],
+      onSuccess: (page: any) => {
+        setComments(page.props.comments || []);
+      },
+      onError: (errors) => {
+        console.error('Failed to fetch live comments:', errors);
+      }
     });
-
-    setComments(res.data);
   };
 
   useEffect(() => {

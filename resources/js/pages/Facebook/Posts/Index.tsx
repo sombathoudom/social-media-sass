@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { FacebookPage } from '@/types/facebook';
 import { Button } from '@/components/ui/button';
@@ -47,31 +47,38 @@ export default function PostsIndex({ page }: Props) {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [selectedPostForComments, setSelectedPostForComments] = useState<string | null>(null);
 
-    const fetchPosts = async (cursor?: string) => {
-        try {
-            if (cursor) {
-                setLoadingMore(true);
-            } else {
-                setLoading(true);
-            }
-
-            const url = `/facebook/pages/${page.id}/posts/fetch${cursor ? `?after=${cursor}` : ''}`;
-            const response = await axios.get(url);
-
-            if (cursor) {
-                setPosts(prev => [...prev, ...response.data.posts]);
-            } else {
-                setPosts(response.data.posts);
-            }
-
-            setAfter(response.data.paging?.cursors?.after || null);
-            setHasMore(!!response.data.paging?.next);
-        } catch (error) {
-            console.error('Failed to fetch posts:', error);
-        } finally {
-            setLoading(false);
-            setLoadingMore(false);
+    const fetchPosts = (cursor?: string) => {
+        if (cursor) {
+            setLoadingMore(true);
+        } else {
+            setLoading(true);
         }
+
+        const params: Record<string, string> = {};
+        if (cursor) params.after = cursor;
+
+        router.get(`/facebook/pages/${page.id}/posts/fetch`, params, {
+            preserveState: true,
+            preserveScroll: true,
+            only: ['posts', 'paging'],
+            onSuccess: (page: any) => {
+                if (cursor) {
+                    setPosts(prev => [...prev, ...page.props.posts]);
+                } else {
+                    setPosts(page.props.posts);
+                }
+
+                setAfter(page.props.paging?.cursors?.after || null);
+                setHasMore(!!page.props.paging?.next);
+            },
+            onError: (errors) => {
+                console.error('Failed to fetch posts:', errors);
+            },
+            onFinish: () => {
+                setLoading(false);
+                setLoadingMore(false);
+            }
+        });
     };
 
     useEffect(() => {

@@ -85,6 +85,11 @@ class PostController extends Controller
                 $sort
             );
 
+            // For Inertia requests, return as props
+            if ($request->header('X-Inertia')) {
+                return response()->json($result);
+            }
+            
             return response()->json($result);
 
         } catch (\Exception $e) {
@@ -122,11 +127,18 @@ class PostController extends Controller
                 $accessToken
             );
 
-            return response()->json([
+            $response = [
                 'success' => true,
                 'reply_id' => $result['id'] ?? null,
                 'message' => 'Reply sent successfully!',
-            ]);
+            ];
+
+            // For Inertia requests, return as props
+            if ($request->header('X-Inertia')) {
+                return response()->json($response);
+            }
+            
+            return response()->json($response);
 
         } catch (\Exception $e) {
             Log::error('Error replying to comment', [
@@ -136,8 +148,8 @@ class PostController extends Controller
             ]);
 
             return response()->json([
-                'error' => 'Failed to send reply: ' . $e->getMessage(),
-            ], 500);
+                'message' => 'Failed to send reply: ' . $e->getMessage(),
+            ], 422);
         }
     }
 

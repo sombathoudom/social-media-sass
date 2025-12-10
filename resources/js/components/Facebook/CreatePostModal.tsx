@@ -11,7 +11,7 @@ import {
     Upload
 } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
-import axios from 'axios';
+import { router } from '@inertiajs/react';
 import { toast } from 'sonner';
 
 interface Props {
@@ -105,43 +105,44 @@ export default function CreatePostModal({ pageId, onClose, onSuccess }: Props) {
 
         setLoading(true);
 
-        try {
-            const formData = new FormData();
-            formData.append('message', message);
+        const formData = new FormData();
+        formData.append('message', message);
 
-            // Upload photos
-            if (photos.length > 0) {
-                photos.forEach((photo, index) => {
-                    formData.append(`photos[${index}]`, photo.file);
-                    formData.append(`photo_captions[${index}]`, photo.caption || '');
-                });
-            }
-
-            // Upload video
-            if (video) {
-                formData.append('video', video.file);
-            }
-
-            await axios.post(`/facebook/pages/${pageId}/posts/create`, formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
+        // Upload photos
+        if (photos.length > 0) {
+            photos.forEach((photo, index) => {
+                formData.append(`photos[${index}]`, photo.file);
+                formData.append(`photo_captions[${index}]`, photo.caption || '');
             });
-
-            toast.success('Post created successfully!');
-            
-            // Clean up object URLs
-            photos.forEach(photo => URL.revokeObjectURL(photo.preview));
-            if (video) URL.revokeObjectURL(video.preview);
-            
-            onSuccess();
-            onClose();
-        } catch (error: any) {
-            console.error('Failed to create post:', error);
-            toast.error(error.response?.data?.error || 'Failed to create post');
-        } finally {
-            setLoading(false);
         }
+
+        // Upload video
+        if (video) {
+            formData.append('video', video.file);
+        }
+
+        router.post(`/facebook/pages/${pageId}/posts/create`, formData, {
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                toast.success('Post created successfully!');
+                
+                // Clean up object URLs
+                photos.forEach(photo => URL.revokeObjectURL(photo.preview));
+                if (video) URL.revokeObjectURL(video.preview);
+                
+                onSuccess();
+                onClose();
+            },
+            onError: (errors) => {
+                console.error('Failed to create post:', errors);
+                const errorMessage = Object.values(errors)[0] as string || 'Failed to create post';
+                toast.error(errorMessage);
+            },
+            onFinish: () => {
+                setLoading(false);
+            }
+        });
     };
 
     return (

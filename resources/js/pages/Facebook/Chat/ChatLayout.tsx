@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import axios from 'axios';
+import { router } from '@inertiajs/react';
 
 import ConversationList from '@/components/Facebook/Chat/ConversationList';
 import MessageList from '@/components/Facebook/Chat/MessageList';
@@ -33,59 +33,76 @@ export default function ChatLayout({
     // -----------------------------------------------------------------------
     // LOAD CONVERSATIONS FOR SELECTED PAGE
     // -----------------------------------------------------------------------
-    const loadConversations = useCallback(async () => {
+    const loadConversations = useCallback(() => {
         if (!activePageId) return;
 
         setLoadingConversations(true);
 
-        const url = fb.chat.conversations({
-            query: { page_id: activePageId },
-        }).url;
-
-        const res = await axios.get(url);
-        setConversations(res.data.data);
-
-        setLoadingConversations(false);
+        router.get(fb.chat.conversations().url, { page_id: activePageId }, {
+            preserveState: true,
+            preserveScroll: true,
+            only: ['conversations'],
+            onSuccess: (page: any) => {
+                setConversations(page.props.conversations?.data || []);
+            },
+            onError: (errors) => {
+                console.error('Failed to fetch conversations:', errors);
+            },
+            onFinish: () => {
+                setLoadingConversations(false);
+            }
+        });
     }, [activePageId]);
 
     // -----------------------------------------------------------------------
     // LOAD MESSAGES IN CONVERSATION
     // -----------------------------------------------------------------------
-    const loadMessages = useCallback(async (conversationId: number) => {
+    const loadMessages = useCallback((conversationId: number) => {
         setLoadingMessages(true);
 
-        const url = fb.chat.messages(conversationId).url;
-
-        const res = await axios.get(url);
-
-        setMessages(res.data.data);
-        setHasMoreMessages(res.data.links?.next !== null);
-
-        setLoadingMessages(false);
+        router.get(fb.chat.messages(conversationId).url, {}, {
+            preserveState: true,
+            preserveScroll: true,
+            only: ['messages'],
+            onSuccess: (page: any) => {
+                setMessages(page.props.messages?.data || []);
+                setHasMoreMessages(page.props.messages?.links?.next !== null);
+            },
+            onError: (errors) => {
+                console.error('Failed to fetch messages:', errors);
+            },
+            onFinish: () => {
+                setLoadingMessages(false);
+            }
+        });
     }, []);
 
     // -----------------------------------------------------------------------
     // LOAD MORE MESSAGES (INFINITE SCROLL)
     // -----------------------------------------------------------------------
     const loadMoreMessages = useCallback(
-        async (conversationId: number) => {
+        (conversationId: number) => {
             if (!hasMoreMessages) return;
 
             const last = messages[0];
             if (!last) return;
 
-            const url = fb.chat.messages(conversationId, {
-                query: { before_id: last.id },
-            }).url;
-
-            const res = await axios.get(url);
-
-            if (res.data.data.length === 0) {
-                setHasMoreMessages(false);
-                return;
-            }
-
-            setMessages((prev) => [...res.data.data, ...prev]);
+            router.get(fb.chat.messages(conversationId).url, { before_id: last.id }, {
+                preserveState: true,
+                preserveScroll: true,
+                only: ['messages'],
+                onSuccess: (page: any) => {
+                    const newMessages = page.props.messages?.data || [];
+                    if (newMessages.length === 0) {
+                        setHasMoreMessages(false);
+                        return;
+                    }
+                    setMessages((prev) => [...newMessages, ...prev]);
+                },
+                onError: (errors) => {
+                    console.error('Failed to load more messages:', errors);
+                }
+            });
         },
         [messages, hasMoreMessages]
     );

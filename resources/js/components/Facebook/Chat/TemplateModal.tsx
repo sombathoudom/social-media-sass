@@ -5,7 +5,7 @@ import { CommentTemplate } from '@/types/facebook';
 import { FacebookConversation } from '@/types/chat';
 
 import fb from '@/routes/fb';
-import axios from 'axios';
+import { router } from '@inertiajs/react';
 
 import {
     Dialog,
@@ -33,22 +33,25 @@ const TemplateModal: FC<Props> = ({ conversation, onClose, onSelect }) => {
     // LOAD ALL SAVED TEMPLATES
     // -----------------------------------------------------------------------
     useEffect(() => {
-        const load = async () => {
-            setLoading(true);
-            try {
-                const res = await axios.get(fb.commentTemplates.index().url);
+        setLoading(true);
+        
+        router.get(fb.commentTemplates.index().url, {}, {
+            preserveState: true,
+            preserveScroll: true,
+            only: ['templates'],
+            onSuccess: (page: any) => {
                 // Handle both array and object responses
-                const data = Array.isArray(res.data) ? res.data : (res.data.data || []);
+                const data = Array.isArray(page.props.templates) ? page.props.templates : (page.props.templates?.data || []);
                 setTemplates(data);
-            } catch (error) {
-                console.error('Failed to load templates:', error);
+            },
+            onError: (errors) => {
+                console.error('Failed to load templates:', errors);
                 setTemplates([]);
-            } finally {
+            },
+            onFinish: () => {
                 setLoading(false);
             }
-        };
-
-        load();
+        });
     }, []);
 
     // -----------------------------------------------------------------------

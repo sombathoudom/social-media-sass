@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import EmojiPicker from 'emoji-picker-react';
 
 import { ImageIcon, MicIcon, SmileIcon, Loader2 } from 'lucide-react';
-import axios from 'axios';
+import { router } from '@inertiajs/react';
 import fb from '@/routes/fb';
 
 import TemplateModal from './TemplateModal';
@@ -39,83 +39,92 @@ const ChatInput: FC<Props> = ({ conversation, onSend }) => {
     // -----------------------------------------------------------------------
     // SEND TEXT
     // -----------------------------------------------------------------------
-    const sendTextMessage = async () => {
+    const sendTextMessage = () => {
         if (!text.trim()) return;
 
         setLoading(true);
 
-        try {
-            const res = await axios.post(fb.chat.send(conversation.id).url, {
-                text: text,
-            });
-
-            onSend(res.data.message);
-            setText('');
-        } catch (error: any) {
-            console.error('Failed to send message:', error);
-            const errorMessage = error.response?.data?.message || error.message || 'Failed to send message';
-            alert(errorMessage);
-        } finally {
-            setLoading(false);
-        }
+        router.post(fb.chat.send(conversation.id).url, {
+            text: text,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: (page: any) => {
+                onSend(page.props.message);
+                setText('');
+            },
+            onError: (errors) => {
+                console.error('Failed to send message:', errors);
+                const errorMessage = Object.values(errors)[0] as string || 'Failed to send message';
+                alert(errorMessage);
+            },
+            onFinish: () => {
+                setLoading(false);
+            }
+        });
     };
 
     // -----------------------------------------------------------------------
     // SEND IMAGE(S)
     // -----------------------------------------------------------------------
-    const sendImageMessage = async () => {
+    const sendImageMessage = () => {
         if (selectedImages.length === 0) return;
 
         setLoading(true);
 
-        try {
-            const form = new FormData();
-            
-            if (selectedImages.length === 1) {
-                form.append('image', selectedImages[0]);
-            } else {
-                selectedImages.forEach((img) => {
-                    form.append('images[]', img);
-                });
-            }
-            form.append('attachment_type', 'image');
-
-            const res = await axios.post(fb.chat.send(conversation.id).url, form, {
-                headers: { 'Content-Type': 'multipart/form-data' },
+        const form = new FormData();
+        
+        if (selectedImages.length === 1) {
+            form.append('image', selectedImages[0]);
+        } else {
+            selectedImages.forEach((img) => {
+                form.append('images[]', img);
             });
-
-            onSend(res.data.message);
-            setSelectedImages([]);
-            setShowImagePreview(false);
-        } catch (error) {
-            console.error('Failed to send image:', error);
-            alert('Failed to send image. Please try again.');
-        } finally {
-            setLoading(false);
         }
+        form.append('attachment_type', 'image');
+
+        router.post(fb.chat.send(conversation.id).url, form, {
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: (page: any) => {
+                onSend(page.props.message);
+                setSelectedImages([]);
+                setShowImagePreview(false);
+            },
+            onError: (errors) => {
+                console.error('Failed to send image:', errors);
+                alert('Failed to send image. Please try again.');
+            },
+            onFinish: () => {
+                setLoading(false);
+            }
+        });
     };
 
     // -----------------------------------------------------------------------
     // SEND AUDIO/VOICE
     // -----------------------------------------------------------------------
-    const sendVoiceMessage = async (file: File) => {
+    const sendVoiceMessage = (file: File) => {
         setLoading(true);
 
-        try {
-            const form = new FormData();
-            form.append('audio', file);
-            form.append('attachment_type', 'voice'); // Changed to 'voice' to match DB constraint
+        const form = new FormData();
+        form.append('audio', file);
+        form.append('attachment_type', 'voice'); // Changed to 'voice' to match DB constraint
 
-            const res = await axios.post(fb.chat.send(conversation.id).url, form, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
-            onSend(res.data.message);
-        } catch (error) {
-            console.error('Failed to send voice message:', error);
-            alert('Failed to send voice message. Please try again.');
-        } finally {
-            setLoading(false);
-        }
+        router.post(fb.chat.send(conversation.id).url, form, {
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: (page: any) => {
+                onSend(page.props.message);
+            },
+            onError: (errors) => {
+                console.error('Failed to send voice message:', errors);
+                alert('Failed to send voice message. Please try again.');
+            },
+            onFinish: () => {
+                setLoading(false);
+            }
+        });
     };
 
     // -----------------------------------------------------------------------
