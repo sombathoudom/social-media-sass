@@ -5,6 +5,55 @@ import { FacebookMessage } from '@/types/chat';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
+// Helper function to format text with clickable links
+const formatTextWithLinks = (text: string) => {
+    if (!text) return text;
+
+    // URL regex pattern
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    
+    const parts = text.split(urlRegex);
+    
+    return parts.map((part, index) => {
+        if (part && urlRegex.test(part)) {
+            // Extract readable domain from URL
+            let displayText = part;
+            try {
+                const url = new URL(part);
+                
+                // Special handling for common services
+                if (url.hostname.includes('maps.app.goo.gl') || url.hostname.includes('maps.google.com')) {
+                    displayText = '📍 Google Maps Location';
+                } else if (url.hostname.includes('youtube.com') || url.hostname.includes('youtu.be')) {
+                    displayText = '🎥 YouTube Video';
+                } else if (url.hostname.includes('facebook.com') || url.hostname.includes('fb.com')) {
+                    displayText = '📘 Facebook Link';
+                } else {
+                    // Show clean domain name
+                    displayText = `🔗 ${url.hostname}`;
+                }
+            } catch (e) {
+                // If URL parsing fails, show truncated version
+                displayText = part.length > 50 ? part.substring(0, 50) + '...' : part;
+            }
+            
+            return (
+                <a
+                    key={index}
+                    href={part}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-200 hover:text-blue-100 underline break-all inline-block max-w-full"
+                    title={part}
+                >
+                    {displayText}
+                </a>
+            );
+        }
+        return part;
+    });
+};
+
 interface Props {
     messages: FacebookMessage[];
     loading: boolean;
@@ -124,7 +173,7 @@ const MessageList: FC<Props> = ({
             <div
                 key={msg.id}
                 className={cn(
-                    'flex flex-col mb-3',
+                    'flex flex-col mb-3 px-1 sm:px-0',
                     isMine ? 'items-end' : 'items-start'
                 )}
             >
@@ -136,15 +185,26 @@ const MessageList: FC<Props> = ({
                 {/* Message Bubble */}
                 <div
                     className={cn(
-                        'max-w-[70%] rounded-2xl break-words shadow-md',
-                        msg.message_type === 'image' || msg.message_type === 'video' ? 'p-1' : 'px-4 py-3',
+                        'max-w-[85%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[60%] rounded-2xl break-words shadow-md overflow-hidden',
+                        msg.message_type === 'image' || msg.message_type === 'video' ? 'p-1' : 'px-3 py-2 sm:px-4 sm:py-3',
                         isMine
                             ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white'
                             : 'bg-white dark:bg-neutral-800 dark:text-white border border-neutral-200 dark:border-neutral-700'
                     )}
                 >
                     {/* TEXT MESSAGE */}
-                    {msg.message_type === 'text' && msg.message}
+                    {msg.message_type === 'text' && msg.message && (
+                        <div 
+                            className="whitespace-pre-wrap break-words overflow-wrap-anywhere hyphens-auto text-sm sm:text-base leading-relaxed"
+                            style={{ 
+                                wordBreak: 'break-word',
+                                overflowWrap: 'anywhere',
+                                maxWidth: '100%'
+                            }}
+                        >
+                            {formatTextWithLinks(msg.message)}
+                        </div>
+                    )}
 
                     {/* EMOJI */}
                     {msg.message_type === 'emoji' && (
@@ -157,7 +217,7 @@ const MessageList: FC<Props> = ({
                             src={msg.message}
                             className="rounded-lg max-w-[280px] max-h-[280px] object-cover cursor-pointer hover:opacity-90 transition"
                             alt="image"
-                            onClick={() => window.open(msg.message, '_blank')}
+                            onClick={() => msg.message && window.open(msg.message, '_blank')}
                         />
                     )}
 
@@ -192,7 +252,7 @@ const MessageList: FC<Props> = ({
     return (
         <div
             ref={containerRef}
-            className="flex-1 overflow-y-auto p-6 relative bg-gradient-to-b from-gray-50/50 to-transparent dark:from-neutral-900/50"
+            className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 relative bg-gradient-to-b from-gray-50/50 to-transparent dark:from-neutral-900/50 min-w-0"
         >
             {/* LOADING MORE MESSAGES INDICATOR */}
             <div ref={topRef} className="flex justify-center my-2">
@@ -210,7 +270,7 @@ const MessageList: FC<Props> = ({
             {showScrollButton && (
                 <button
                     onClick={scrollToBottom}
-                    className="fixed bottom-24 right-8 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-3 shadow-lg transition-all duration-200 z-10"
+                    className="fixed bottom-24 right-4 sm:right-8 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-2 sm:p-3 shadow-lg transition-all duration-200 z-10"
                     title="Scroll to bottom"
                 >
                     <svg

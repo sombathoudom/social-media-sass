@@ -42,6 +42,13 @@ export default function Create({ pages, templates }: Props) {
     comment_reply_video: '',
     comment_reply_voice: '',
     no_match_reply: '',
+    // Private reply fields
+    enable_private_reply: false,
+    private_reply_message: '',
+    private_reply_image: '',
+    private_reply_video: '',
+    private_reply_voice: '',
+    private_reply_delay_seconds: 0,
   });
 
   const togglePage = (pageId: string) => {
@@ -320,6 +327,76 @@ export default function Create({ pages, templates }: Props) {
                   placeholder="https://example.com/voice.mp3"
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Private Reply Settings */}
+          <Card>
+            <CardHeader>
+              <h2 className="text-xl font-semibold">Private Inbox Reply</h2>
+            </CardHeader>
+            <CardContent className="space-y-4">
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  checked={data.enable_private_reply}
+                  onCheckedChange={(checked) => setData('enable_private_reply', checked as boolean)}
+                />
+                <Label className="font-medium">Enable private inbox reply</Label>
+              </div>
+
+              {data.enable_private_reply && (
+                <div className="space-y-4">
+                  <div>
+                    <Label>Private Reply Message</Label>
+                    <Textarea
+                      value={data.private_reply_message}
+                      onChange={(e) => setData('private_reply_message', e.target.value)}
+                      placeholder="Hi! Thanks for commenting. How can we help you?"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Delay (seconds)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="3600"
+                      value={data.private_reply_delay_seconds}
+                      onChange={(e) => setData('private_reply_delay_seconds', parseInt(e.target.value) || 0)}
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Private Reply Image URL (optional)</Label>
+                    <Input
+                      value={data.private_reply_image}
+                      onChange={(e) => setData('private_reply_image', e.target.value)}
+                      placeholder="https://example.com/image.jpg"
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Private Reply Video URL (optional)</Label>
+                    <Input
+                      value={data.private_reply_video}
+                      onChange={(e) => setData('private_reply_video', e.target.value)}
+                      placeholder="https://example.com/video.mp4"
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Private Reply Voice URL (optional)</Label>
+                    <Input
+                      value={data.private_reply_voice}
+                      onChange={(e) => setData('private_reply_voice', e.target.value)}
+                      placeholder="https://example.com/voice.mp3"
+                    />
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 

@@ -73,6 +73,13 @@ export interface AutoReplyCampaign {
   comment_reply_voice?: string;
   no_match_reply?: string;
   is_active: boolean;
+  // Private reply fields
+  enable_private_reply?: boolean;
+  private_reply_message?: string;
+  private_reply_image?: string;
+  private_reply_video?: string;
+  private_reply_voice?: string;
+  private_reply_delay_seconds?: number;
   created_at: string;
   updated_at: string;
   facebook_pages?: FacebookPage[];

@@ -259,6 +259,27 @@ class FacebookService
     }
 
     /* ------------------------------------------------------
+     * SEND PRIVATE REPLY TO COMMENT
+     * ------------------------------------------------------ */
+    public function sendPrivateReply(string $commentId, string $message, string $pageToken)
+    {
+        try {
+            $response = $this->fb->post("/{$commentId}/private_replies", [
+                'message' => $message,
+            ], $pageToken);
+
+            return $response->getDecodedBody();
+
+        } catch (Exception $e) {
+            Log::error("FB private reply error: " . $e->getMessage(), [
+                'comment_id' => $commentId,
+                'message' => $message,
+            ]);
+            throw $e;
+        }
+    }
+
+    /* ------------------------------------------------------
      * FETCH LIVE VIDEO COMMENTS
      * ------------------------------------------------------ */
     public function getLiveComments(string $liveId, string $pageToken)

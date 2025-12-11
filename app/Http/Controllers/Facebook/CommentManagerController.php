@@ -65,6 +65,13 @@ class CommentManagerController extends Controller
                 'comment_reply_video' => 'nullable|url',
                 'comment_reply_voice' => 'nullable|url',
                 'no_match_reply' => 'nullable|string',
+                // Private reply fields
+                'enable_private_reply' => 'nullable|boolean',
+                'private_reply_message' => 'nullable|string',
+                'private_reply_image' => 'nullable|url',
+                'private_reply_video' => 'nullable|url',
+                'private_reply_voice' => 'nullable|url',
+                'private_reply_delay_seconds' => 'nullable|integer|min:0|max:3600',
             ]);
 
             // Set defaults for boolean fields
@@ -74,6 +81,8 @@ class CommentManagerController extends Controller
             $validated['enable_comment_reply'] = $validated['enable_comment_reply'] ?? true;
             $validated['like_comment'] = $validated['like_comment'] ?? false;
             $validated['hide_after_reply'] = $validated['hide_after_reply'] ?? false;
+            $validated['enable_private_reply'] = $validated['enable_private_reply'] ?? false;
+            $validated['private_reply_delay_seconds'] = $validated['private_reply_delay_seconds'] ?? 0;
 
             // Validate that at least one page is selected if not applying to all
             if (!($validated['apply_to_all_pages'] ?? false)) {
@@ -166,6 +175,13 @@ class CommentManagerController extends Controller
                 'comment_reply_voice' => 'nullable|url',
                 'no_match_reply' => 'nullable|string',
                 'is_active' => 'boolean',
+                // Private reply fields
+                'enable_private_reply' => 'boolean',
+                'private_reply_message' => 'nullable|string',
+                'private_reply_image' => 'nullable|url',
+                'private_reply_video' => 'nullable|url',
+                'private_reply_voice' => 'nullable|url',
+                'private_reply_delay_seconds' => 'nullable|integer|min:0|max:3600',
             ]);
 
             // Validate that at least one page is selected if not applying to all

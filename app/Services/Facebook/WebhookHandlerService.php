@@ -335,8 +335,12 @@ class WebhookHandlerService
         $content = $messageText;
 
         if ($attachments) {
-            $type    = $attachments['type']; // image, audio, video, file, etc.
-            $content = $attachments['payload']['url'] ?? null;
+            // Map Facebook attachment types to our allowed message types
+            $type = $this->mapAttachmentType($attachments['type']);
+            $rawUrl = $attachments['payload']['url'] ?? null;
+            
+            // Clean Facebook wrapped URLs for better display
+            $content = $this->cleanFacebookUrl($rawUrl);
         }
 
         $facebookMessage = FacebookMessage::create([
@@ -364,5 +368,58 @@ class WebhookHandlerService
         // --------------------------------------------------------
         broadcast(new \App\Events\MessageSent($facebookMessage))
             ->toOthers();
+    }
+
+    /**
+     * Map Facebook attachment types to our allowed message types
+     */
+    protected function mapAttachmentType($facebookType)
+    {
+        $typeMapping = [
+            'image' => 'image',
+            'audio' => 'audio',
+            'video' => 'video',
+            'file' => 'file',
+            'fallback' => 'text', // Map fallback to text (for links, locations, etc.)
+            'location' => 'text', // Map location to text
+            'template' => 'template',
+            'sticker' => 'emoji', // Map stickers to emoji
+            'like' => 'emoji', // Map likes to emoji
+        ];
+
+        return $typeMapping[$facebookType] ?? 'text'; // Default to text for unknown types
+    }
+
+    /**
+     * Clean Facebook wrapped URLs to extract the actual URL
+     */
+    protected function cleanFacebookUrl($url)
+    {
+        if (!$url) {
+            return $url;
+        }
+
+        // Check if it's a Facebook wrapped URL
+        if (strpos($url, 'l.facebook.com/l.php') !== false) {
+            // Parse the URL to extract the 'u' parameter
+            $parsedUrl = parse_url($url);
+            if (isset($parsedUrl['query'])) {
+                parse_str($parsedUrl['query'], $queryParams);
+                if (isset($queryParams['u'])) {
+                    // Decode the actual URL
+                    $actualUrl = urldecode($queryParams['u']);
+                    
+                    // Log for debugging
+                    Log::info("Cleaned Facebook URL", [
+                        'original' => $url,
+                        'cleaned' => $actualUrl
+                    ]);
+                    
+                    return $actualUrl;
+                }
+            }
+        }
+
+        return $url; // Return original if not a Facebook wrapped URL
     }
 }

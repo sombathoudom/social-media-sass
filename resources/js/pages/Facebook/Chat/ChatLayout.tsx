@@ -33,76 +33,104 @@ export default function ChatLayout({
     // -----------------------------------------------------------------------
     // LOAD CONVERSATIONS FOR SELECTED PAGE
     // -----------------------------------------------------------------------
-    const loadConversations = useCallback(() => {
+    const loadConversations = useCallback(async () => {
         if (!activePageId) return;
 
         setLoadingConversations(true);
 
-        router.get(fb.chat.conversations().url, { page_id: activePageId }, {
-            preserveState: true,
-            preserveScroll: true,
-            only: ['conversations'],
-            onSuccess: (page: any) => {
-                setConversations(page.props.conversations?.data || []);
-            },
-            onError: (errors) => {
-                console.error('Failed to fetch conversations:', errors);
-            },
-            onFinish: () => {
-                setLoadingConversations(false);
+        try {
+            const url = new URL(fb.chat.conversations().url, window.location.origin);
+            url.searchParams.set('page_id', activePageId);
+            
+            const response = await fetch(url.toString(), {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-        });
+
+            const data = await response.json();
+            setConversations(data.data || []);
+        } catch (error) {
+            console.error('Failed to fetch conversations:', error);
+        } finally {
+            setLoadingConversations(false);
+        }
     }, [activePageId]);
 
     // -----------------------------------------------------------------------
     // LOAD MESSAGES IN CONVERSATION
     // -----------------------------------------------------------------------
-    const loadMessages = useCallback((conversationId: number) => {
+    const loadMessages = useCallback(async (conversationId: number) => {
         setLoadingMessages(true);
 
-        router.get(fb.chat.messages(conversationId).url, {}, {
-            preserveState: true,
-            preserveScroll: true,
-            only: ['messages'],
-            onSuccess: (page: any) => {
-                setMessages(page.props.messages?.data || []);
-                setHasMoreMessages(page.props.messages?.links?.next !== null);
-            },
-            onError: (errors) => {
-                console.error('Failed to fetch messages:', errors);
-            },
-            onFinish: () => {
-                setLoadingMessages(false);
+        try {
+            const response = await fetch(fb.chat.messages(conversationId).url, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-        });
+
+            const data = await response.json();
+            setMessages(data.data || []);
+            setHasMoreMessages(data.links?.next !== null);
+        } catch (error) {
+            console.error('Failed to fetch messages:', error);
+        } finally {
+            setLoadingMessages(false);
+        }
     }, []);
 
     // -----------------------------------------------------------------------
     // LOAD MORE MESSAGES (INFINITE SCROLL)
     // -----------------------------------------------------------------------
     const loadMoreMessages = useCallback(
-        (conversationId: number) => {
+        async (conversationId: number) => {
             if (!hasMoreMessages) return;
 
             const last = messages[0];
             if (!last) return;
 
-            router.get(fb.chat.messages(conversationId).url, { before_id: last.id }, {
-                preserveState: true,
-                preserveScroll: true,
-                only: ['messages'],
-                onSuccess: (page: any) => {
-                    const newMessages = page.props.messages?.data || [];
-                    if (newMessages.length === 0) {
-                        setHasMoreMessages(false);
-                        return;
-                    }
-                    setMessages((prev) => [...newMessages, ...prev]);
-                },
-                onError: (errors) => {
-                    console.error('Failed to load more messages:', errors);
+            try {
+                const url = new URL(fb.chat.messages(conversationId).url, window.location.origin);
+                url.searchParams.set('before_id', last.id.toString());
+                
+                const response = await fetch(url.toString(), {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
-            });
+
+                const data = await response.json();
+                const newMessages = data.data || [];
+                
+                if (newMessages.length === 0) {
+                    setHasMoreMessages(false);
+                    return;
+                }
+                
+                setMessages((prev) => [...newMessages, ...prev]);
+                setHasMoreMessages(data.links?.next !== null);
+            } catch (error) {
+                console.error('Failed to load more messages:', error);
+            }
         },
         [messages, hasMoreMessages]
     );
@@ -250,7 +278,7 @@ export default function ChatLayout({
             />
 
             {/* Chat Window */}
-            <div className="flex flex-col flex-1 border-l dark:border-neutral-800 bg-gradient-to-b from-gray-50 to-white dark:from-neutral-900 dark:to-neutral-950">
+            <div className="flex flex-col flex-1 border-l dark:border-neutral-800 bg-gradient-to-b from-gray-50 to-white dark:from-neutral-900 dark:to-neutral-950 min-w-0 overflow-hidden">
                 {selectedConversation ? (
                     <>
                         {/* Chat Header */}

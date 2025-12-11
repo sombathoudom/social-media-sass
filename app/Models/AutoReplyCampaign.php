@@ -26,6 +26,13 @@ class AutoReplyCampaign extends Model
         'comment_reply_voice',
         'no_match_reply',
         'is_active',
+        // Private reply fields
+        'enable_private_reply',
+        'private_reply_message',
+        'private_reply_image',
+        'private_reply_video',
+        'private_reply_voice',
+        'private_reply_delay_seconds',
     ];
 
     protected $casts = [
@@ -36,6 +43,7 @@ class AutoReplyCampaign extends Model
         'like_comment' => 'boolean',
         'hide_after_reply' => 'boolean',
         'is_active' => 'boolean',
+        'enable_private_reply' => 'boolean',
     ];
 
     public function user()
